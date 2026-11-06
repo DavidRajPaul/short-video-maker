@@ -1,6 +1,6 @@
 import z from "zod";
 import { bundle } from "@remotion/bundler";
-import { renderMedia, selectComposition } from "@remotion/renderer";
+import { renderStill, renderMedia, selectComposition } from "@remotion/renderer";
 import path from "path";
 import { ensureBrowser } from "@remotion/renderer";
 
@@ -49,6 +49,9 @@ export class Remotion {
 
     const outputLocation = path.join(this.config.videosDirPath, `${id}.mp4`);
 
+    if (data.config.cover && orientation === OrientationEnum.portrait) {
+      await renderStill({composition, serveUrl:this.bundled, inputProps:data, frame:0, imageFormat:"jpeg", output:path.join(this.config.videosDirPath,id+".jpg")});
+    }
     await renderMedia({
       codec: "h264",
       composition,

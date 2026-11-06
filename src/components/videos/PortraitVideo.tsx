@@ -1,3 +1,4 @@
+import { GraceCover } from "./GraceCover";
 import { Watermark } from "./Watermark";
 import {
   AbsoluteFill,
@@ -156,6 +157,7 @@ export const PortraitVideo: React.FC<z.infer<typeof shortVideoSchema>> = ({
           </Sequence>
         );
       })}
+      {config.cover && frame < Math.round(fps * 1.35) && <GraceCover {...config.cover} />}
       <Watermark />
     </AbsoluteFill>
   );

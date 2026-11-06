@@ -1,14 +1,15 @@
 /* eslint-disable @remotion/deterministic-randomness */
 import { getOrientationConfig } from "../../components/utils";
+import { findCommons } from "./Commons";
+import { allowedText } from "./StockSafety";
 import { logger } from "../../logger";
 import { OrientationEnum, type Video } from "../../types/shorts";
 
-const jokerTerms: string[] = ["nature", "globe", "space", "ocean"];
 const durationBufferSeconds = 3;
 const defaultTimeoutMs = 5000;
-const retryTimes = 3;
 
 export class PexelsAPI {
+  private turn = 0;
   constructor(private API_KEY: string) {}
 
   private async _findVideo(
@@ -148,63 +149,22 @@ export class PexelsAPI {
     excludeIds: string[] = [],
     orientation: OrientationEnum = OrientationEnum.portrait,
     timeout: number = defaultTimeoutMs,
-    retryCounter: number = 0,
+
   ): Promise<Video> {
-    // shuffle the search terms to randomize the search order
-    const shuffledJokerTerms = jokerTerms.sort(() => Math.random() - 0.5);
-    const shuffledSearchTerms = searchTerms.sort(() => Math.random() - 0.5);
-
-    for (const searchTerm of [...shuffledSearchTerms, ...shuffledJokerTerms]) {
-      if (process.env.PIXABAY_API_KEY && Math.random() < 0.5) {
+    const sources = ["pexels","commons"];
+    if (process.env.PIXABAY_API_KEY) sources.push("pixabay");
+    const start = this.turn++ % sources.length;
+    for (const term of [...searchTerms.filter(allowedText).slice(0,3), "forest trail", "olive grove"]) {
+      for (let i=0;i<sources.length;i++) {
+        const provider=sources[(start+i)%sources.length];
         try {
-          const clip = await this.findPixabay(searchTerm, minDurationSeconds, excludeIds, orientation, timeout);
-          if (clip) return clip;
-        } catch {
-          logger.warn({ searchTerm }, "Pixabay unavailable, using Pexels");
-        }
-      }
-      try {
-        return await this._findVideo(
-          searchTerm,
-          minDurationSeconds,
-          excludeIds,
-          orientation,
-          timeout,
-        );
-      } catch (error: unknown) {
-        if (
-          error instanceof Error &&
-          error instanceof DOMException &&
-          error.name === "TimeoutError"
-        ) {
-          if (retryCounter < retryTimes) {
-            logger.warn(
-              { searchTerm, retryCounter },
-              "Timeout error, retrying...",
-            );
-            return await this.findVideo(
-              searchTerms,
-              minDurationSeconds,
-              excludeIds,
-              orientation,
-              timeout,
-              retryCounter + 1,
-            );
-          }
-          logger.error(
-            { searchTerm, retryCounter },
-            "Timeout error, retry limit reached",
-          );
-          throw error;
-        }
-
-        logger.error(error, "Error finding video in Pexels API for term");
+          const args = [term,minDurationSeconds,excludeIds,orientation,timeout] as const;
+          const clip = provider==="commons" ? await findCommons(term,minDurationSeconds,excludeIds,timeout)
+            : provider==="pixabay" ? await this.findPixabay(...args) : await this._findVideo(...args);
+          if (clip) { logger.info({provider,id:clip.id},"Selected stock candidate"); return clip; }
+        } catch { logger.warn({provider},"Stock provider unavailable"); }
       }
     }
-    logger.error(
-      { searchTerms },
-      "No videos found in Pexels API for the given terms",
-    );
-    throw new Error("No videos found in Pexels API");
+    throw new Error("No suitable stock footage");
   }
 }

@@ -1,10 +1,10 @@
+import { allowedText, runMedia, screenFootage } from "./libraries/StockSafety";
+import { randomInt } from "node:crypto";
 import { OrientationEnum } from "./../types/shorts";
 /* eslint-disable @remotion/deterministic-randomness */
 import fs from "fs-extra";
 import cuid from "cuid";
 import path from "path";
-import https from "https";
-import http from "http";
 
 import { Kokoro } from "./libraries/Kokoro";
 import { Remotion } from "./libraries/Remotion";
@@ -98,13 +98,23 @@ export class ShortCreator {
       },
       "Creating short video",
     );
+    if (!inputScenes.length || inputScenes.some(s=>!allowedText([s.text,...s.searchTerms].join(" ")))) throw new Error("Content screening rejected script or search terms");
     const scenes: Scene[] = [];
     let totalDuration = 0;
     const historyPath = path.join(this.config.videosDirPath, "..", "clip-history.json");
     const history: string[][] = fs.existsSync(historyPath) ? fs.readJsonSync(historyPath) : [];
     const excludeVideoIds = history.flat();
     const usedIds: string[] = [];
-    const tempFiles = [];
+    const tempFiles: string[] = [];
+    const motifs = [/seed|grow|begin/i,/rain|morning|window/i,/olive|root|endure/i,/night|rest|sea|sleep/i,/home|lonely|door/i,/path|walk|guide/i];
+    const hook = inputScenes[0].text;
+    const recent = history.slice(-2).flat();
+    const eligible = motifs.map((pattern,index)=>({index,match:pattern.test(hook)})).filter(x=>!recent.includes("cover-"+x.index));
+    const matches = eligible.filter(x=>x.match);
+    const choices = matches.length ? matches : eligible;
+    const artStart = choices[randomInt(choices.length)].index;
+    usedIds.push("cover-"+artStart);
+    try {
 
     const orientation: OrientationEnum =
       config.orientation || OrientationEnum.portrait;
@@ -140,43 +150,31 @@ export class ShortCreator {
       const captions = await this.whisper.CreateCaption(tempWavPath);
 
       await this.ffmpeg.saveToMp3(audioStream, tempMp3Path);
-      const video = await this.pexelsApi.findVideo(
-        scene.searchTerms,
-        audioLength,
-        excludeVideoIds,
-        orientation,
-      );
-
-      logger.debug(`Downloading video from ${video.url} to ${tempVideoPath}`);
-
-      await new Promise<void>((resolve, reject) => {
-        const fileStream = fs.createWriteStream(tempVideoPath);
-        https
-          .get(video.url, (response: http.IncomingMessage) => {
-            if (response.statusCode !== 200) {
-              reject(
-                new Error(`Failed to download video: ${response.statusCode}`),
-              );
-              return;
-            }
-
-            response.pipe(fileStream);
-
-            fileStream.on("finish", () => {
-              fileStream.close();
-              logger.debug(`Video downloaded successfully to ${tempVideoPath}`);
-              resolve();
-            });
-          })
-          .on("error", (err: Error) => {
-            fs.unlink(tempVideoPath, () => {}); // Delete the file if download failed
-            logger.error(err, "Error downloading video:");
-            reject(err);
-          });
-      });
-
-      usedIds.push(video.id);
-      excludeVideoIds.push(video.id);
+      let accepted = false;
+      let selectedId = "";
+      try {
+        const clip = await this.pexelsApi.findVideo(scene.searchTerms,audioLength,excludeVideoIds,orientation);
+        const raw = tempVideoPath+".stock";
+        tempFiles.push(raw);
+        // Bound storage and time. Re-encode only the selected excerpt; discard stock audio.
+        const vertical = orientation === OrientationEnum.portrait;
+        const size = vertical ? "1080:1920" : "1920:1080";
+        await runMedia("curl",["--fail","--location","--proto","=https","--max-time","60","--max-filesize","100000000","--output",raw,clip.url]);
+        await runMedia("ffmpeg",["-y","-loglevel","error","-i",raw,"-t",String(audioLength+0.2),"-vf",`scale=${size}:force_original_aspect_ratio=increase,crop=${size},setsar=1`,"-an","-threads","2","-preset","ultrafast","-pix_fmt","yuv420p",tempVideoPath],{timeout:90000});
+        accepted = await screenFootage(tempVideoPath,audioLength);
+        selectedId = clip.id;
+        excludeVideoIds.push(clip.id);
+      } catch { logger.warn({videoId,index},"External clip unavailable"); }
+      if (!accepted) {
+        const tile=(artStart+index)%6;
+        const size=orientation===OrientationEnum.portrait?"720x1280":"1280x720";
+        const crop=orientation===OrientationEnum.portrait?"ih*9/16:ih":"iw:iw*9/16";
+        const motion=`crop=${crop},zoompan=z='min(1.12,1+on*0.0005)':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:s=${size}:fps=25`;
+        await runMedia("ffmpeg",["-y","-loglevel","error","-loop","1","-i",path.join(this.config.packageDirPath,"public","grace",`scene-${tile}.jpg`),"-t",String(audioLength+0.2),"-vf",motion,"-threads","2","-pix_fmt","yuv420p","-preset","ultrafast",tempVideoPath],{timeout:90000});
+        selectedId="studio-"+tile;
+      }
+      logger.info({videoId,index,selectedId},"Approved scene source");
+      usedIds.push(selectedId);
 
       scenes.push({
         captions,
@@ -202,6 +200,7 @@ export class ShortCreator {
         music: selectedMusic,
         scenes,
         config: {
+          cover: {title: inputScenes[0].text.split(/(?<=[.!?])\s/)[0].split(/\s+/).slice(0,12).join(" "), scene: artStart},
           durationMs: totalDuration * 1000,
           paddingBack: config.paddingBack,
           ...{
@@ -217,11 +216,17 @@ export class ShortCreator {
 
     fs.writeJsonSync(historyPath + ".tmp", [...history, usedIds].slice(-30));
     fs.renameSync(historyPath + ".tmp", historyPath);
+    return videoId;
+    } catch (error) {
+      fs.removeSync(this.getVideoPath(videoId));
+      fs.removeSync(path.join(this.config.videosDirPath,videoId+".jpg"));
+      throw error;
+    } finally {
     for (const file of tempFiles) {
       fs.removeSync(file);
     }
 
-    return videoId;
+    }
   }
 
   public getVideoPath(videoId: string): string {
@@ -231,6 +236,7 @@ export class ShortCreator {
   public deleteVideo(videoId: string): void {
     const videoPath = this.getVideoPath(videoId);
     fs.removeSync(videoPath);
+    fs.removeSync(path.join(this.config.videosDirPath,videoId+".jpg"));
     logger.debug({ videoId }, "Deleted video file");
   }
 

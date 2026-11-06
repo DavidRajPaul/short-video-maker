@@ -28,6 +28,13 @@ export class APIRouter {
   }
 
   private setupRoutes() {
+    this.router.get("/short-video/:videoId/cover.jpg", (req,res) => {
+      const id = req.params.videoId;
+      if (!/^[a-z0-9]+$/i.test(id) || this.shortCreator.status(id) !== "ready") { res.sendStatus(404); return; }
+      const file = path.join(this.config.videosDirPath, id + ".jpg");
+      if (!fs.existsSync(file)) { res.sendStatus(404); return; }
+      res.sendFile(path.resolve(file));
+    });
     this.router.post(
       "/short-video",
       async (req: ExpressRequest, res: ExpressResponse) => {
