@@ -9,3 +9,4 @@ FROM gyoridavid/short-video-maker:1.3.4-tiny
 WORKDIR /app
 COPY --from=build /app/dist/ ./dist/
 COPY public/ ./public/
+CMD ["node", "dist/index.js"]
