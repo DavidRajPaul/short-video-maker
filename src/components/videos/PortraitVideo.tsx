@@ -1,3 +1,4 @@
+import { Watermark } from "./Watermark";
 import {
   AbsoluteFill,
   Sequence,
@@ -155,6 +156,7 @@ export const PortraitVideo: React.FC<z.infer<typeof shortVideoSchema>> = ({
           </Sequence>
         );
       })}
+      <Watermark />
     </AbsoluteFill>
   );
 };

@@ -100,7 +100,10 @@ export class ShortCreator {
     );
     const scenes: Scene[] = [];
     let totalDuration = 0;
-    const excludeVideoIds = [];
+    const historyPath = path.join(this.config.videosDirPath, "..", "clip-history.json");
+    const history: string[][] = fs.existsSync(historyPath) ? fs.readJsonSync(historyPath) : [];
+    const excludeVideoIds = history.flat();
+    const usedIds: string[] = [];
     const tempFiles = [];
 
     const orientation: OrientationEnum =
@@ -172,6 +175,7 @@ export class ShortCreator {
           });
       });
 
+      usedIds.push(video.id);
       excludeVideoIds.push(video.id);
 
       scenes.push({
@@ -211,6 +215,8 @@ export class ShortCreator {
       orientation,
     );
 
+    fs.writeJsonSync(historyPath + ".tmp", [...history, usedIds].slice(-30));
+    fs.renameSync(historyPath + ".tmp", historyPath);
     for (const file of tempFiles) {
       fs.removeSync(file);
     }

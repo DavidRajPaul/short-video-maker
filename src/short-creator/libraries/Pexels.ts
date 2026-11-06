@@ -78,7 +78,7 @@ export class PexelsAPI {
     // find all the videos that fits the criteria, then select one randomly
     const filteredVideos = videos
       .map((video) => {
-        if (excludeIds.includes(video.id)) {
+        if (excludeIds.includes(String(video.id))) {
           return;
         }
         if (!video.video_files.length) {
@@ -98,7 +98,7 @@ export class PexelsAPI {
               file.height === requiredVideoHeight
             ) {
               return {
-                id: video.id,
+                id: String(video.id),
                 url: file.link,
                 width: file.width,
                 height: file.height,
@@ -125,6 +125,23 @@ export class PexelsAPI {
     return video;
   }
 
+  private async findPixabay(term: string, seconds: number, excluded: string[], orientation: OrientationEnum, timeout: number): Promise<Video | undefined> {
+    const query = new URLSearchParams({ key: process.env.PIXABAY_API_KEY!, q: term.slice(0, 100), safesearch: "true", per_page: "50" });
+    const res = await fetch(`https://pixabay.com/api/videos/?${query}`, { signal: AbortSignal.timeout(timeout) });
+    if (!res.ok) return;
+    type Hit = { id: number; duration: number; videos: Record<string, {width: number; height: number; url: string}> };
+    const { hits } = await res.json() as { hits: Hit[] };
+    const candidates: Video[] = [];
+    for (const hit of hits) {
+      const id = `pixabay-${hit.id}`;
+      if (hit.duration < seconds + durationBufferSeconds || excluded.includes(id)) continue;
+      const file = Object.values(hit.videos).filter(f => f.url && (orientation === OrientationEnum.portrait ? f.height > f.width : f.width > f.height) && Math.min(f.width, f.height) >= 720)
+        .sort((a,b) => a.width - b.width)[0];
+      if (file) candidates.push({ id, ...file });
+    }
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
   async findVideo(
     searchTerms: string[],
     minDurationSeconds: number,
@@ -138,6 +155,14 @@ export class PexelsAPI {
     const shuffledSearchTerms = searchTerms.sort(() => Math.random() - 0.5);
 
     for (const searchTerm of [...shuffledSearchTerms, ...shuffledJokerTerms]) {
+      if (process.env.PIXABAY_API_KEY && Math.random() < 0.5) {
+        try {
+          const clip = await this.findPixabay(searchTerm, minDurationSeconds, excludeIds, orientation, timeout);
+          if (clip) return clip;
+        } catch {
+          logger.warn({ searchTerm }, "Pixabay unavailable, using Pexels");
+        }
+      }
       try {
         return await this._findVideo(
           searchTerm,
