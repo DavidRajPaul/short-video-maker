@@ -152,8 +152,10 @@ export class ShortCreator {
       await this.ffmpeg.saveToMp3(audioStream, tempMp3Path);
       let accepted = false;
       let selectedId = "";
-      try {
+      for (let attempt = 0; attempt < 8 && !accepted; attempt++) {
+       try {
         const clip = await this.pexelsApi.findVideo(scene.searchTerms,audioLength,excludeVideoIds,orientation);
+        excludeVideoIds.push(clip.id);
         const raw = tempVideoPath+".stock";
         tempFiles.push(raw);
         // Bound storage and time. Re-encode only the selected excerpt; discard stock audio.
@@ -163,16 +165,9 @@ export class ShortCreator {
         await runMedia("ffmpeg",["-y","-loglevel","error","-i",raw,"-t",String(audioLength+0.2),"-vf",`scale=${size}:force_original_aspect_ratio=increase,crop=${size},setsar=1`,"-an","-threads","2","-preset","ultrafast","-pix_fmt","yuv420p",tempVideoPath],{timeout:90000});
         accepted = await screenFootage(tempVideoPath,audioLength);
         selectedId = clip.id;
-        excludeVideoIds.push(clip.id);
       } catch { logger.warn({videoId,index},"External clip unavailable"); }
-      if (!accepted) {
-        const tile=(artStart+index)%6;
-        const size=orientation===OrientationEnum.portrait?"720x1280":"1280x720";
-        const crop=orientation===OrientationEnum.portrait?"ih*9/16:ih":"iw:iw*9/16";
-        const motion=`crop=${crop},zoompan=z='min(1.12,1+on*0.0005)':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:s=${size}:fps=25`;
-        await runMedia("ffmpeg",["-y","-loglevel","error","-loop","1","-i",path.join(this.config.packageDirPath,"public","grace",`scene-${tile}.jpg`),"-t",String(audioLength+0.2),"-vf",motion,"-threads","2","-pix_fmt","yuv420p","-preset","ultrafast",tempVideoPath],{timeout:90000});
-        selectedId="studio-"+tile;
       }
+      if (!accepted) throw new Error("No approved moving footage found for scene " + (index+1));
       logger.info({videoId,index,selectedId},"Approved scene source");
       usedIds.push(selectedId);
 
@@ -188,9 +183,7 @@ export class ShortCreator {
       totalDuration += audioLength;
       index++;
     }
-    if (config.paddingBack) {
-      totalDuration += config.paddingBack / 1000;
-    }
+
 
     const selectedMusic = this.findMusic(totalDuration, config.music);
     logger.debug({ selectedMusic }, "Selected music for the video");

@@ -3,6 +3,7 @@ import { promisify } from "node:util";
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { createRequire } from "node:module";
+import { logger } from "../../logger";
 import path from "node:path";
 
 export const runMedia = promisify(execFile);
@@ -29,7 +30,9 @@ export async function screenFootage(file: string, seconds: number): Promise<bool
     await runMedia("ffmpeg", ["-v","error","-i",file,"-t",String(seconds),"-vf","fps=2:start_time=0,scale=256:256:force_original_aspect_ratio=decrease","-q:v","4",path.join(dir,"%05d.jpg")], {timeout:60000});
     const frames = (await readdir(dir)).sort();
     if (frames.length < Math.max(1, Math.floor(seconds * 2))) return false;
-    classifier ??= loadClassifier();
+    const analysis = await runMedia("ffmpeg", ["-hide_banner","-i",file,"-t",String(seconds),"-vf","scale=160:-2,freezedetect=n=-45dB:d=0.9","-an","-f","null","-"], {timeout:30000});
+    if (analysis.stderr.includes("freeze_start")) return false;
+    classifier ??= loadClassifier().catch(error => { classifier = undefined; throw error; });
     const classify = await classifier;
     for (const frame of frames) {
       const scores = await classify(path.join(dir,frame), [...safeLabels,...unsafeLabels]) as {label:string;score:number}[];
@@ -37,7 +40,8 @@ export async function screenFootage(file: string, seconds: number): Promise<bool
       if (!(safe >= 0.90) || !safeLabels.includes(scores[0]?.label)) return false;
     }
     return true;
-  } catch {
+  } catch (error) {
+    logger.warn({reason: error instanceof Error ? error.message.slice(0,280) : "screening error"},"Footage screening unavailable");
     return false;
   } finally {
     await rm(dir,{recursive:true,force:true});
