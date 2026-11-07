@@ -13,7 +13,12 @@ export function allowedText(value: string) {
   return !restricted.test(value.normalize("NFKC").replace(/[_/-]/g, " "));
 }
 
-const safeLabels = ["a peaceful landscape", "an ordinary object indoors", "a fully clothed person in an everyday setting", "architecture or a place of worship"];
+const safeLabels = [
+  "a peaceful landscape", "an ordinary object indoors",
+  "a fully clothed person in an everyday setting", "architecture or a place of worship",
+  "an open Bible or Christian prayer book being read",
+  "a Christian church interior, stained glass window, or cross",
+];
 const unsafeLabels = ["nudity or sexual imagery", "suggestive posing or revealing underwear", "blood, injury or graphic violence", "hate symbols or extremist propaganda", "drug abuse or weapons", "disturbing or frightening imagery", "a brand advertisement or prominent commercial logo"];
 // These zero-shot labels compete for one normalized score. Visually reviewed
 // church footage scored 0.872 safe and a benign nature shot scored 0.763.
