@@ -21,6 +21,7 @@ describe("Kokoro-safe narration", () => {
       .toBe("Hope John 3:16 again");
     expect(cleanSpokenText("The answer is [Psalm 23], not a production direction."))
       .toContain("[Psalm 23]");
+    expect(() => cleanSpokenText("[gasp] Trust in God.")).toThrow(/Unrecognized/);
   });
 
   it("keeps legacy scene behavior without opting into the profile", () => {
