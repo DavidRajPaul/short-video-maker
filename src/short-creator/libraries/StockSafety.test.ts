@@ -18,5 +18,13 @@ describe("stock content approval", () => {
       { label: "architecture or a place of worship", score: 0.79 },
       { label: "nudity or sexual imagery", score: 0.21 },
     ]).approved).toBe(false);
+    expect(approvedClassification([
+      { label: "an ordinary object indoors", score: 0.74 },
+      { label: "disturbing or frightening imagery", score: 0.26 },
+    ]).approved).toBe(false);
+    expect(approvedClassification([
+      { label: "an ordinary object indoors", score: 0.763 },
+      { label: "disturbing or frightening imagery", score: 0.237 },
+    ]).approved).toBe(true);
   });
 });

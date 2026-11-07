@@ -154,7 +154,7 @@ export class ShortCreator {
       await this.ffmpeg.saveToMp3(audioStream, tempMp3Path);
       let accepted = false;
       let selectedId = "";
-      for (let attempt = 0; attempt < 8 && !accepted; attempt++) {
+      for (let attempt = 0; attempt < 12 && !accepted; attempt++) {
        try {
         const clip = await this.pexelsApi.findVideo(scene.searchTerms,audioLength,excludeVideoIds,orientation);
         excludeVideoIds.push(clip.id);

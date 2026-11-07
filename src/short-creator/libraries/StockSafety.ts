@@ -15,12 +15,14 @@ export function allowedText(value: string) {
 
 const safeLabels = ["a peaceful landscape", "an ordinary object indoors", "a fully clothed person in an everyday setting", "architecture or a place of worship"];
 const unsafeLabels = ["nudity or sexual imagery", "suggestive posing or revealing underwear", "blood, injury or graphic violence", "hate symbols or extremist propaganda", "drug abuse or weapons", "disturbing or frightening imagery", "a brand advertisement or prominent commercial logo"];
-// The labels compete for one normalized score. Reviewed church footage scored
-// 0.872 safe, so 0.90 incorrectly rejected it. Keep a safe top label and no
-// more than 20% combined probability assigned to all unsafe labels.
+// These zero-shot labels compete for one normalized score. Visually reviewed
+// church footage scored 0.872 safe and a benign nature shot scored 0.763.
+// Require a safe top label for every sampled frame and reject uncertain clips.
 export function approvedClassification(scores: {label:string;score:number}[]) {
   const safe = scores.filter(x => safeLabels.includes(x.label)).reduce((total,x) => total+x.score,0);
-  return { approved: safe >= 0.80 && safeLabels.includes(scores[0]?.label), safe };
+  const critical = scores.filter(x => [unsafeLabels[0],unsafeLabels[2],unsafeLabels[3],unsafeLabels[4]].includes(x.label));
+  return { approved: safe >= 0.75 && safeLabels.includes(scores[0]?.label)
+    && critical.every(x => x.score < 0.10), safe };
 }
 const loadClassifier = async () => {
   const runtime = createRequire(require.resolve("kokoro-js"));
