@@ -24,6 +24,14 @@ import type {
   MusicForVideo,
 } from "../types/shorts";
 
+function spokenText(text: string): string {
+  return text.normalize("NFKC")
+    .replace(/\\[([^\\]]+)\\]\\([^)]+\\)/g, "$1")
+    .replace(/[*_~`#]+/g, " ")
+    .replace(/[<>|]+/g, " ")
+    .replace(/\\s+/g, " ").trim();
+}
+
 export class ShortCreator {
   private queue: {
     sceneInput: SceneInput[];
@@ -123,7 +131,7 @@ export class ShortCreator {
     let index = 0;
     for (const scene of inputScenes) {
       const audio = await this.kokoro.generate(
-        scene.text,
+        spokenText(scene.text),
         config.voice ?? "af_heart",
         config.speechSpeed ?? 1,
       );
