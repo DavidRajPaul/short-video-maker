@@ -26,10 +26,10 @@ import type {
 
 function spokenText(text: string): string {
   return text.normalize("NFKC")
-    .replace(/\\[([^\\]]+)\\]\\([^)]+\\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/[*_~`#]+/g, " ")
     .replace(/[<>|]+/g, " ")
-    .replace(/\\s+/g, " ").trim();
+    .replace(/\s+/g, " ").trim();
 }
 
 export class ShortCreator {
