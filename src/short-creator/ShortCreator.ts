@@ -7,6 +7,8 @@ import cuid from "cuid";
 import path from "path";
 
 import { Kokoro } from "./libraries/Kokoro";
+import { planNarration } from "./libraries/NarrationPlanner";
+import { composeNarrationAudio } from "./libraries/NarrationAudio";
 import { Remotion } from "./libraries/Remotion";
 import { Whisper } from "./libraries/Whisper";
 import { FFMpeg } from "./libraries/FFmpeg";
@@ -23,14 +25,6 @@ import type {
   MusicTag,
   MusicForVideo,
 } from "../types/shorts";
-
-function spokenText(text: string): string {
-  return text.normalize("NFKC")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/[*_~`#]+/g, " ")
-    .replace(/[<>|]+/g, " ")
-    .replace(/\s+/g, " ").trim();
-}
 
 export class ShortCreator {
   private queue: {
@@ -130,35 +124,44 @@ export class ShortCreator {
     let coverBackground: string | undefined;
     let index = 0;
     for (const scene of inputScenes) {
-      const audio = await this.kokoro.generate(
-        spokenText(scene.text),
-        config.voice ?? "af_heart",
-        config.speechSpeed ?? 1,
-      );
-      let { audioLength } = audio;
-      const { audio: audioStream } = audio;
-
-      // add the paddingBack in seconds to the last scene
-      if (index + 1 === inputScenes.length && config.paddingBack) {
-        audioLength += config.paddingBack / 1000;
-      }
-
+      const plan = planNarration(scene, config);
       const tempId = cuid();
       const tempWavFileName = `${tempId}.wav`;
       const tempMp3FileName = `${tempId}.mp3`;
       const tempVideoFileName = `${tempId}.mp4`;
       const tempWavPath = path.join(this.config.tempDirPath, tempWavFileName);
       const tempMp3Path = path.join(this.config.tempDirPath, tempMp3FileName);
-      const tempVideoPath = path.join(
-        this.config.tempDirPath,
-        tempVideoFileName,
-      );
-      tempFiles.push(tempVideoPath);
-      tempFiles.push(tempWavPath, tempMp3Path);
+      const tempVideoPath = path.join(this.config.tempDirPath, tempVideoFileName);
+      tempFiles.push(tempVideoPath, tempWavPath, tempMp3Path);
+
+      const speechSegments = [];
+      for (const [segmentIndex, segment] of plan.segments.entries()) {
+        // Directions remain metadata and are NEVER passed to the TTS engine.
+        const speech = await this.kokoro.generate(
+          segment.text, config.voice ?? "af_heart", plan.speed,
+        );
+        const segmentPath = path.join(this.config.tempDirPath, `${tempId}-segment-${segmentIndex}.wav`);
+        tempFiles.push(segmentPath);
+        await this.ffmpeg.saveNormalizedAudio(speech.audio, segmentPath);
+        const segmentCaptions = await this.whisper.CreateCaption(segmentPath);
+        const wav = fs.readFileSync(segmentPath);
+        speechSegments.push({
+          wav: Uint8Array.from(wav).buffer,
+          captions: segmentCaptions,
+          pauseAfterMs: segment.pauseAfterMs,
+        });
+      }
+      const composed = composeNarrationAudio(speechSegments);
+      const audioStream = composed.audio;
+      const captions = composed.captions;
+      let audioLength = composed.audioLength;
+
+      // Add the trailing visual padding in seconds only for the last scene.
+      if (index + 1 === inputScenes.length && config.paddingBack) {
+        audioLength += config.paddingBack / 1000;
+      }
 
       await this.ffmpeg.saveNormalizedAudio(audioStream, tempWavPath);
-      const captions = await this.whisper.CreateCaption(tempWavPath);
-
       await this.ffmpeg.saveToMp3(audioStream, tempMp3Path);
       let accepted = false;
       let selectedId = "";
