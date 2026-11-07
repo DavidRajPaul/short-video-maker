@@ -17,15 +17,20 @@ export type NarrationPlan = {
 // including scripture references, is preserved rather than silently deleted.
 const AUDIO_DIRECTIONS = /\[(?:whispers?|whispering|sighs?|sighing|excited|sad|laughs?|laughing|crying|angry|softly|reverent|uplifting|warm|gentle|powerful|reflective)\]/gi;
 const SSML = /<\/?(?:speak|break|prosody|emphasis|say-as|voice)\b[^>]*>/gi;
+const UNKNOWN_DIRECTION = /\[[A-Za-z][A-Za-z ,_-]{1,40}\]/;
 
 export function cleanSpokenText(text: string): string {
-  return text.normalize("NFKC")
+  const cleaned = text.normalize("NFKC")
     .replace(AUDIO_DIRECTIONS, " ")
     .replace(SSML, " ")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/[*_`#~]+/g, " ")
     .replace(/[<>|]+/g, " ")
     .replace(/\s+/g, " ").trim();
+  if (UNKNOWN_DIRECTION.test(cleaned)) {
+    throw new Error("Unrecognized bracketed narration direction; refusing to speak it");
+  }
+  return cleaned;
 }
 
 function splitIntoSentences(text: string): string[] {
