@@ -20,6 +20,24 @@ const safeLabels = [
   "a Christian church interior, stained glass window, or cross",
 ];
 const unsafeLabels = ["nudity or sexual imagery", "suggestive posing or revealing underwear", "blood, injury or graphic violence", "hate symbols or extremist propaganda", "drug abuse or weapons", "disturbing or frightening imagery", "a brand advertisement or prominent commercial logo"];
+const devotionalLabels = [
+  "an open Christian Bible with readable pages",
+  "a Christian church with a cross, stained glass, or altar",
+  "a person praying with a Bible or Christian cross",
+  "a Catholic rosary or crucifix in prayer",
+];
+const unrelatedLabels = [
+  "ordinary architecture or ancient stone ruins",
+  "a landscape with mountains, snow, forest, or sea",
+  "a city street or houses without religious imagery",
+  "a person reading an ordinary book",
+  "a person posing for a fashion photo",
+  "a religious shrine without Christian symbols",
+];
+export function approvedDevotionalClassification(scores: {label:string;score:number}[]) {
+  const faithful = scores.filter(x => devotionalLabels.includes(x.label)).reduce((total,x) => total+x.score,0);
+  return { approved: devotionalLabels.includes(scores[0]?.label) && faithful >= 0.55, faithful };
+}
 // These zero-shot labels compete for one normalized score. Visually reviewed
 // church footage scored 0.872 safe and a benign nature shot scored 0.763.
 // Require a safe top label for every sampled frame and reject uncertain clips.
@@ -38,7 +56,7 @@ let classifier: ReturnType<typeof loadClassifier> | undefined;
 
 // Inspect the portion used in the output, including its initial frame. Unavailable
 // classification, missing frames, or uncertain scores never approve external media.
-export async function screenFootage(file: string, seconds: number): Promise<boolean> {
+export async function screenFootage(file: string, seconds: number, strictChristianVisuals = false): Promise<boolean> {
   const dir = await mkdtemp(path.join(tmpdir(), "grace-review-"));
   try {
     await runMedia("ffmpeg", ["-v","error","-i",file,"-t",String(seconds),"-vf","fps=2:start_time=0,scale=256:256:force_original_aspect_ratio=decrease","-q:v","4",path.join(dir,"%05d.jpg")], {timeout:60000});
@@ -54,12 +72,20 @@ export async function screenFootage(file: string, seconds: number): Promise<bool
     }
     classifier ??= loadClassifier().catch(error => { classifier = undefined; throw error; });
     const classify = await classifier;
-    for (const frame of frames) {
+    for (const [index,frame] of frames.entries()) {
       const scores = await classify(path.join(dir,frame), [...safeLabels,...unsafeLabels]) as {label:string;score:number}[];
       const {approved,safe} = approvedClassification(scores);
       if (!approved) {
         logger.warn({safeScore:Number(safe.toFixed(3)),topLabel:scores[0]?.label},"Footage content score below approval threshold");
         return false;
+      }
+      if (strictChristianVisuals && (index === 0 || index === Math.floor(frames.length/2) || index === frames.length-1)) {
+        const relevance = await classify(path.join(dir,frame), [...devotionalLabels,...unrelatedLabels]) as {label:string;score:number}[];
+        const {approved: relevant,faithful} = approvedDevotionalClassification(relevance);
+        if (!relevant) {
+          logger.warn({faithfulScore:Number(faithful.toFixed(3)),topLabel:relevance[0]?.label},"Footage does not depict Christian subject");
+          return false;
+        }
       }
     }
     return true;

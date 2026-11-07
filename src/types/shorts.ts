@@ -92,6 +92,8 @@ export const renderConfig = z.object({
     .describe("Morning Prayer or the verified Bible reference."),
   clipHistorySize: z.number().int().min(30).max(365).optional()
     .describe("Completed videos to exclude when selecting footage. Default 60."),
+  strictChristianVisuals: z.boolean().optional()
+    .describe("Require Bible, Christian prayer, or church imagery in every stock scene."),
 
   paddingBack: z
     .number()
