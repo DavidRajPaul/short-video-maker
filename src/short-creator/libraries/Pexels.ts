@@ -1,3 +1,4 @@
+import { findPixabay } from "./Pixabay";
 /* eslint-disable @remotion/deterministic-randomness */
 import { getOrientationConfig } from "../../components/utils";
 import { findCommons } from "./Commons";
@@ -5,7 +6,7 @@ import { allowedText } from "./StockSafety";
 import { logger } from "../../logger";
 import { OrientationEnum, type Video } from "../../types/shorts";
 
-const durationBufferSeconds = 3;
+const durationBufferSeconds = 0.5;
 const defaultTimeoutMs = 5000;
 
 export class PexelsAPI {
@@ -87,9 +88,7 @@ export class PexelsAPI {
         }
 
         // calculate the real duration of the video by converting the FPS to 25
-        const fps = video.video_files[0].fps;
-        const duration =
-          fps < 25 ? video.duration * (fps / 25) : video.duration;
+        const duration = video.duration;
 
         if (duration >= minDurationSeconds + durationBufferSeconds) {
           for (const file of video.video_files) {
@@ -126,23 +125,6 @@ export class PexelsAPI {
     return video;
   }
 
-  private async findPixabay(term: string, seconds: number, excluded: string[], orientation: OrientationEnum, timeout: number): Promise<Video | undefined> {
-    const query = new URLSearchParams({ key: process.env.PIXABAY_API_KEY!, q: term.slice(0, 100), safesearch: "true", per_page: "50" });
-    const res = await fetch(`https://pixabay.com/api/videos/?${query}`, { signal: AbortSignal.timeout(timeout) });
-    if (!res.ok) return;
-    type Hit = { id: number; duration: number; videos: Record<string, {width: number; height: number; url: string}> };
-    const { hits } = await res.json() as { hits: Hit[] };
-    const candidates: Video[] = [];
-    for (const hit of hits) {
-      const id = `pixabay-${hit.id}`;
-      if (hit.duration < seconds + durationBufferSeconds || excluded.includes(id)) continue;
-      const file = Object.values(hit.videos).filter(f => f.url && (orientation === OrientationEnum.portrait ? f.height > f.width : f.width > f.height) && Math.min(f.width, f.height) >= 720)
-        .sort((a,b) => a.width - b.width)[0];
-      if (file) candidates.push({ id, ...file });
-    }
-    return candidates[Math.floor(Math.random() * candidates.length)];
-  }
-
   async findVideo(
     searchTerms: string[],
     minDurationSeconds: number,
@@ -154,13 +136,13 @@ export class PexelsAPI {
     const sources = ["pexels","commons"];
     if (process.env.PIXABAY_API_KEY) sources.push("pixabay");
     const start = this.turn++ % sources.length;
-    for (const term of [...searchTerms.filter(allowedText).slice(0,3), "forest trail", "olive grove"]) {
+    for (const term of [...searchTerms.filter(allowedText).slice(0,3)]) {
       for (let i=0;i<sources.length;i++) {
         const provider=sources[(start+i)%sources.length];
         try {
           const args = [term,minDurationSeconds,excludeIds,orientation,timeout] as const;
           const clip = provider==="commons" ? await findCommons(term,minDurationSeconds,excludeIds,timeout)
-            : provider==="pixabay" ? await this.findPixabay(...args) : await this._findVideo(...args);
+            : provider==="pixabay" ? await findPixabay(...args) : await this._findVideo(...args);
           if (clip) { logger.info({provider,id:clip.id},"Selected stock candidate"); return clip; }
         } catch { logger.warn({provider},"Stock provider unavailable"); }
       }
