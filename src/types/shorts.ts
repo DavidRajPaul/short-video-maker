@@ -30,8 +30,24 @@ export type Scene = {
   };
 };
 
+export const narrationDelivery = z.enum(["uplifting", "warm", "reverent", "reflective", "powerful", "gentle"]);
+export const narrationProfile = z.object({
+  mood: narrationDelivery.default("uplifting"),
+  intensity: z.number().int().min(0).max(100).default(75),
+});
+export type NarrationProfile = z.infer<typeof narrationProfile>;
+
+export const narrationSegment = z.object({
+  text: z.string().trim().min(1),
+  delivery: narrationDelivery.optional(),
+  pauseAfterMs: z.number().int().min(0).max(2000).optional(),
+});
+export type NarrationSegment = z.infer<typeof narrationSegment>;
+
 export const sceneInput = z.object({
   text: z.string().describe("Text to be spoken in the video"),
+  narration: z.object({ segments: z.array(narrationSegment).min(1).max(50) }).optional()
+    .describe("Optional structured delivery. Segment speech must match scene.text."),
   searchTerms: z
     .array(z.string())
     .describe(
@@ -84,6 +100,8 @@ export enum MusicVolumeEnum {
 }
 
 export const renderConfig = z.object({
+  narrationProfile: narrationProfile.optional()
+    .describe("Opt into Kokoro-safe segmented narration; defaults uplifting, 75%, 0.9x speed."),
   speechSpeed: z.number().min(0.75).max(1.2).optional()
     .describe("Narration rate. Use 0.9 for steady devotional speech."),
   coverTitle: z.string().trim().min(1).max(60).optional()
