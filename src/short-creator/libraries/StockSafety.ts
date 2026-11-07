@@ -29,15 +29,24 @@ export async function screenFootage(file: string, seconds: number): Promise<bool
   try {
     await runMedia("ffmpeg", ["-v","error","-i",file,"-t",String(seconds),"-vf","fps=2:start_time=0,scale=256:256:force_original_aspect_ratio=decrease","-q:v","4",path.join(dir,"%05d.jpg")], {timeout:60000});
     const frames = (await readdir(dir)).sort();
-    if (frames.length < Math.max(1, Math.floor(seconds * 2))) return false;
+    if (frames.length < Math.max(1, Math.floor(seconds * 2))) {
+      logger.warn({frames,seconds},"Footage missing sampled frames");
+      return false;
+    }
     const analysis = await runMedia("ffmpeg", ["-hide_banner","-i",file,"-t",String(seconds),"-vf","scale=160:-2,freezedetect=n=-45dB:d=0.9","-an","-f","null","-"], {timeout:30000});
-    if (analysis.stderr.includes("freeze_start")) return false;
+    if (analysis.stderr.includes("freeze_start")) {
+      logger.warn("Footage is static");
+      return false;
+    }
     classifier ??= loadClassifier().catch(error => { classifier = undefined; throw error; });
     const classify = await classifier;
     for (const frame of frames) {
       const scores = await classify(path.join(dir,frame), [...safeLabels,...unsafeLabels]) as {label:string;score:number}[];
       const safe = scores.filter(x=>safeLabels.includes(x.label)).reduce((total,x)=>total+x.score,0);
-      if (!(safe >= 0.90) || !safeLabels.includes(scores[0]?.label)) return false;
+      if (!(safe >= 0.90) || !safeLabels.includes(scores[0]?.label)) {
+        logger.warn({safeScore:Number(safe.toFixed(3)),topLabel:scores[0]?.label},"Footage content score below approval threshold");
+        return false;
+      }
     }
     return true;
   } catch (error) {
