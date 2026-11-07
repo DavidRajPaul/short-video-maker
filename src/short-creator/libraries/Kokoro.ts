@@ -12,6 +12,7 @@ export class Kokoro {
   async generate(
     text: string,
     voice: Voices,
+    speed = 1,
   ): Promise<{
     audio: ArrayBuffer;
     audioLength: number;
@@ -19,6 +20,7 @@ export class Kokoro {
     const splitter = new TextSplitterStream();
     const stream = this.tts.stream(splitter, {
       voice,
+      speed,
     });
     splitter.push(text);
     splitter.close();
@@ -58,7 +60,7 @@ export class Kokoro {
     header.writeUInt32LE(36 + totalDataLength, 4);
     header.writeUInt32LE(totalDataLength, 40);
 
-    return Buffer.concat([header, ...dataParts]);
+    return Uint8Array.from(Buffer.concat([header, ...dataParts])).buffer;
   }
 
   static async init(dtype: kokoroModelPrecision): Promise<Kokoro> {

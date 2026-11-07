@@ -84,6 +84,15 @@ export enum MusicVolumeEnum {
 }
 
 export const renderConfig = z.object({
+  speechSpeed: z.number().min(0.75).max(1.2).optional()
+    .describe("Narration rate. Use 0.9 for steady devotional speech."),
+  coverTitle: z.string().trim().min(1).max(60).optional()
+    .describe("Accurate cover headline, ideally 3 to 6 words."),
+  coverSubtitle: z.string().trim().max(80).optional()
+    .describe("Morning Prayer or the verified Bible reference."),
+  clipHistorySize: z.number().int().min(30).max(365).optional()
+    .describe("Completed videos to exclude when selecting footage. Default 60."),
+
   paddingBack: z
     .number()
     .optional()

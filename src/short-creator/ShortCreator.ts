@@ -103,7 +103,7 @@ export class ShortCreator {
     let totalDuration = 0;
     const historyPath = path.join(this.config.videosDirPath, "..", "clip-history.json");
     const history: string[][] = fs.existsSync(historyPath) ? fs.readJsonSync(historyPath) : [];
-    const excludeVideoIds = history.flat();
+    const excludeVideoIds = history.slice(-(config.clipHistorySize ?? 60)).flat();
     const usedIds: string[] = [];
     const tempFiles: string[] = [];
     const motifs = [/seed|grow|begin/i,/rain|morning|window/i,/olive|root|endure/i,/night|rest|sea|sleep/i,/home|lonely|door/i,/path|walk|guide/i];
@@ -119,11 +119,13 @@ export class ShortCreator {
     const orientation: OrientationEnum =
       config.orientation || OrientationEnum.portrait;
 
+    let coverBackground: string | undefined;
     let index = 0;
     for (const scene of inputScenes) {
       const audio = await this.kokoro.generate(
         scene.text,
         config.voice ?? "af_heart",
+        config.speechSpeed ?? 1,
       );
       let { audioLength } = audio;
       const { audio: audioStream } = audio;
@@ -171,6 +173,14 @@ export class ShortCreator {
       logger.info({videoId,index,selectedId},"Approved scene source");
       usedIds.push(selectedId);
 
+      if (index === 0) {
+        const coverFile = tempVideoPath + ".jpg";
+        tempFiles.push(coverFile);
+        await runMedia("ffmpeg", ["-y", "-loglevel", "error", "-i", tempVideoPath,
+          "-frames:v", "1", "-q:v", "2", coverFile], { timeout: 30000 });
+        coverBackground = `http://localhost:${this.config.port}/api/tmp/${path.basename(coverFile)}`;
+      }
+
       scenes.push({
         captions,
         video: `http://localhost:${this.config.port}/api/tmp/${tempVideoFileName}`,
@@ -193,7 +203,12 @@ export class ShortCreator {
         music: selectedMusic,
         scenes,
         config: {
-          cover: {title: inputScenes[0].text.split(/(?<=[.!?])\s/)[0].split(/\s+/).slice(0,12).join(" "), scene: artStart},
+          cover: {
+            title: config.coverTitle ?? inputScenes[0].text.split(/(?<=[.!?])\s/)[0].split(/\s+/).slice(0,6).join(" "),
+            subtitle: config.coverSubtitle,
+            background: coverBackground,
+            scene: artStart,
+          },
           durationMs: totalDuration * 1000,
           paddingBack: config.paddingBack,
           ...{
@@ -207,7 +222,7 @@ export class ShortCreator {
       orientation,
     );
 
-    fs.writeJsonSync(historyPath + ".tmp", [...history, usedIds].slice(-30));
+    fs.writeJsonSync(historyPath + ".tmp", [...history, usedIds].slice(-365));
     fs.renameSync(historyPath + ".tmp", historyPath);
     return videoId;
     } catch (error) {
