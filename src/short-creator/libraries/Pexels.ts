@@ -19,6 +19,7 @@ export class PexelsAPI {
     excludeIds: string[],
     orientation: OrientationEnum,
     timeout: number,
+    page: number,
   ): Promise<Video> {
     if (!this.API_KEY) {
       throw new Error("API key not set");
@@ -30,7 +31,7 @@ export class PexelsAPI {
     const headers = new Headers();
     headers.append("Authorization", this.API_KEY);
     const response = await fetch(
-      `https://api.pexels.com/videos/search?orientation=${orientation}&size=medium&per_page=80&query=${encodeURIComponent(searchTerm)}`,
+      `https://api.pexels.com/videos/search?orientation=${orientation}&size=medium&per_page=80&page=${page}&query=${encodeURIComponent(searchTerm)}`,
       {
         method: "GET",
         headers,
@@ -136,13 +137,16 @@ export class PexelsAPI {
     const sources = ["pexels","commons"];
     if (process.env.PIXABAY_API_KEY) sources.push("pixabay");
     const start = this.turn++ % sources.length;
+    // Search beyond the same first 80 results as screening excludes unsuitable
+    // and previously used clips. Rotate pages without changing safety criteria.
+    const page = 1 + (Math.floor((this.turn - 1) / 2) % 3);
     for (const term of [...searchTerms.filter(allowedText).slice(0,3)]) {
       for (let i=0;i<sources.length;i++) {
         const provider=sources[(start+i)%sources.length];
         try {
           const args = [term,minDurationSeconds,excludeIds,orientation,timeout] as const;
           const clip = provider==="commons" ? await findCommons(term,minDurationSeconds,excludeIds,timeout)
-            : provider==="pixabay" ? await findPixabay(...args) : await this._findVideo(...args);
+            : provider==="pixabay" ? await findPixabay(...args) : await this._findVideo(...args,page);
           if (clip) { logger.info({provider,id:clip.id},"Selected stock candidate"); return clip; }
         } catch { logger.warn({provider},"Stock provider unavailable"); }
       }
