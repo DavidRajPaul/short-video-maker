@@ -165,7 +165,7 @@ export class ShortCreator {
         const size = vertical ? "1080:1920" : "1920:1080";
         await runMedia("curl",["--fail","--location","--proto","=https","--max-time","60","--max-filesize","100000000","--output",raw,clip.url]);
         await runMedia("ffmpeg",["-y","-loglevel","error","-i",raw,"-t",String(audioLength+0.2),"-vf",`scale=${size}:force_original_aspect_ratio=increase,crop=${size},setsar=1`,"-an","-threads","2","-preset","ultrafast","-pix_fmt","yuv420p",tempVideoPath],{timeout:90000});
-        accepted = await screenFootage(tempVideoPath,audioLength);
+        accepted = await screenFootage(tempVideoPath,audioLength,config.strictChristianVisuals ?? false);
         selectedId = clip.id;
       } catch (error) {
         const cause = error instanceof Error ? error.message : String(error);
