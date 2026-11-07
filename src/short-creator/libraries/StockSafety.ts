@@ -15,6 +15,13 @@ export function allowedText(value: string) {
 
 const safeLabels = ["a peaceful landscape", "an ordinary object indoors", "a fully clothed person in an everyday setting", "architecture or a place of worship"];
 const unsafeLabels = ["nudity or sexual imagery", "suggestive posing or revealing underwear", "blood, injury or graphic violence", "hate symbols or extremist propaganda", "drug abuse or weapons", "disturbing or frightening imagery", "a brand advertisement or prominent commercial logo"];
+// The labels compete for one normalized score. Reviewed church footage scored
+// 0.872 safe, so 0.90 incorrectly rejected it. Keep a safe top label and no
+// more than 20% combined probability assigned to all unsafe labels.
+export function approvedClassification(scores: {label:string;score:number}[]) {
+  const safe = scores.filter(x => safeLabels.includes(x.label)).reduce((total,x) => total+x.score,0);
+  return { approved: safe >= 0.80 && safeLabels.includes(scores[0]?.label), safe };
+}
 const loadClassifier = async () => {
   const runtime = createRequire(require.resolve("kokoro-js"));
   const { pipeline } = runtime("@huggingface/transformers");
@@ -42,8 +49,8 @@ export async function screenFootage(file: string, seconds: number): Promise<bool
     const classify = await classifier;
     for (const frame of frames) {
       const scores = await classify(path.join(dir,frame), [...safeLabels,...unsafeLabels]) as {label:string;score:number}[];
-      const safe = scores.filter(x=>safeLabels.includes(x.label)).reduce((total,x)=>total+x.score,0);
-      if (!(safe >= 0.90) || !safeLabels.includes(scores[0]?.label)) {
+      const {approved,safe} = approvedClassification(scores);
+      if (!approved) {
         logger.warn({safeScore:Number(safe.toFixed(3)),topLabel:scores[0]?.label},"Footage content score below approval threshold");
         return false;
       }
