@@ -167,7 +167,10 @@ export class ShortCreator {
         await runMedia("ffmpeg",["-y","-loglevel","error","-i",raw,"-t",String(audioLength+0.2),"-vf",`scale=${size}:force_original_aspect_ratio=increase,crop=${size},setsar=1`,"-an","-threads","2","-preset","ultrafast","-pix_fmt","yuv420p",tempVideoPath],{timeout:90000});
         accepted = await screenFootage(tempVideoPath,audioLength);
         selectedId = clip.id;
-      } catch { logger.warn({videoId,index},"External clip unavailable"); }
+      } catch (error) {
+        const cause = error instanceof Error ? error.message : String(error);
+        logger.warn({videoId,index,stage:"download-or-transcode",reason:cause.slice(0,300).replace(/https?:\/\/\S+/g,"[url]")},"External clip unavailable");
+      }
       }
       if (!accepted) throw new Error("No approved moving footage found for scene " + (index+1));
       logger.info({videoId,index,selectedId},"Approved scene source");
