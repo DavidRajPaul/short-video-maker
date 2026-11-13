@@ -5,7 +5,7 @@ describe("stock content approval", () => {
   it("accepts reviewed church footage with a safe top label", () => {
     expect(approvedClassification([
       { label: "architecture or a place of worship", score: 0.872 },
-      { label: "disturbing or frightening imagery", score: 0.128 },
+      { label: "disturbing or frightening imagery", score: 0.05 },
     ]).approved).toBe(true);
   });
 
@@ -19,13 +19,17 @@ describe("stock content approval", () => {
       { label: "nudity or sexual imagery", score: 0.21 },
     ]).approved).toBe(false);
     expect(approvedClassification([
-      { label: "an ordinary object indoors", score: 0.74 },
-      { label: "disturbing or frightening imagery", score: 0.26 },
+      { label: "an ordinary object indoors", score: 0.49 },
+      { label: "disturbing or frightening imagery", score: 0.01 },
     ]).approved).toBe(false);
+    expect(approvedClassification([
+      { label: "an ordinary object indoors", score: 0.595 },
+      { label: "disturbing or frightening imagery", score: 0.05 },
+    ]).approved).toBe(true);
     expect(approvedClassification([
       { label: "an ordinary object indoors", score: 0.763 },
       { label: "disturbing or frightening imagery", score: 0.237 },
-    ]).approved).toBe(true);
+    ]).approved).toBe(false);
   });
 });
 

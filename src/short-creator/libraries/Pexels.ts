@@ -1,6 +1,5 @@
 import { findPixabay } from "./Pixabay";
 /* eslint-disable @remotion/deterministic-randomness */
-import { getOrientationConfig } from "../../components/utils";
 import { findCommons } from "./Commons";
 import { allowedText } from "./StockSafety";
 import { logger } from "../../logger";
@@ -67,9 +66,6 @@ export class PexelsAPI {
       }[];
     }[];
 
-    const { width: requiredVideoWidth, height: requiredVideoHeight } =
-      getOrientationConfig(orientation);
-
     if (!videos || videos.length === 0) {
       logger.error(
         { searchTerm, orientation },
@@ -92,19 +88,22 @@ export class PexelsAPI {
         const duration = video.duration;
 
         if (duration >= minDurationSeconds + durationBufferSeconds) {
-          for (const file of video.video_files) {
-            if (
-              file.quality === "hd" &&
-              file.width === requiredVideoWidth &&
-              file.height === requiredVideoHeight
-            ) {
-              return {
-                id: String(video.id),
-                url: file.link,
-                width: file.width,
-                height: file.height,
-              };
-            }
+          const portrait = orientation === OrientationEnum.portrait;
+          const file = video.video_files
+            .filter((candidate) =>
+              candidate.quality === "hd" &&
+              (portrait
+                ? candidate.height > candidate.width && candidate.width >= 720 && candidate.height >= 1280
+                : candidate.width > candidate.height && candidate.width >= 1280 && candidate.height >= 720),
+            )
+            .sort((a, b) => b.width * b.height - a.width * a.height)[0];
+          if (file) {
+            return {
+              id: String(video.id),
+              url: file.link,
+              width: file.width,
+              height: file.height,
+            };
           }
         }
       })
@@ -132,15 +131,32 @@ export class PexelsAPI {
     excludeIds: string[] = [],
     orientation: OrientationEnum = OrientationEnum.portrait,
     timeout: number = defaultTimeoutMs,
+    strictChristianVisuals = false,
 
   ): Promise<Video> {
     const sources = ["pexels","commons"];
     if (process.env.PIXABAY_API_KEY) sources.push("pixabay");
-    const start = this.turn++ % sources.length;
+    const turn = this.turn++;
+    const start = turn % sources.length;
     // Search beyond the same first 80 results as screening excludes unsuitable
     // and previously used clips. Rotate pages without changing safety criteria.
-    const page = 1 + (Math.floor((this.turn - 1) / 2) % 3);
-    for (const term of [...searchTerms.filter(allowedText).slice(0,3)]) {
+    const page = 1 + (Math.floor(turn / 2) % 3);
+    const originalTerms = [...new Set(searchTerms.filter(allowedText).map((term) => term.trim()).filter(Boolean))].slice(0,3);
+    const devotionalFallbacks = [
+      "Christian prayer hands cross",
+      "open Bible reading church interior",
+      "Christian worship stained glass church",
+      "person praying with Bible sunrise",
+      "church altar candles cross",
+      "Christian devotional reading Bible",
+      "rosary crucifix hands prayer",
+      "church exterior dawn cross",
+    ];
+    const fallback = devotionalFallbacks[Math.floor(turn / sources.length) % devotionalFallbacks.length];
+    const terms = strictChristianVisuals
+      ? [...originalTerms, fallback]
+      : originalTerms;
+    for (const term of terms) {
       for (let i=0;i<sources.length;i++) {
         const provider=sources[(start+i)%sources.length];
         try {
