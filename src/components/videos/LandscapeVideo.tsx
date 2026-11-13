@@ -1,4 +1,5 @@
 import { Watermark } from "./Watermark";
+import { ClosingBeat } from "./ClosingBeat";
 import {
   AbsoluteFill,
   Sequence,
@@ -6,6 +7,7 @@ import {
   useVideoConfig,
   Audio,
   OffthreadVideo,
+  interpolate,
 } from "remotion";
 import { z } from "zod";
 import { loadFont } from "@remotion/google-fonts/BarlowCondensed";
@@ -24,7 +26,7 @@ export const LandscapeVideo: React.FC<z.infer<typeof shortVideoSchema>> = ({
   config,
 }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, durationInFrames } = useVideoConfig();
 
   const captionBackgroundColor = config.captionBackgroundColor ?? "blue";
 
@@ -49,6 +51,10 @@ export const LandscapeVideo: React.FC<z.infer<typeof shortVideoSchema>> = ({
   }
 
   const [musicVolume, musicMuted] = calculateVolume(config.musicVolume);
+  const musicFadeFrames = Math.min(
+    Math.round(fps * 0.9),
+    Math.round(((config.paddingBack ?? 0) / 1000) * fps),
+  );
 
   return (
     <AbsoluteFill style={{ backgroundColor: "white" }}>
@@ -57,7 +63,16 @@ export const LandscapeVideo: React.FC<z.infer<typeof shortVideoSchema>> = ({
         src={music.url}
         startFrom={music.start * fps}
         endAt={music.end * fps}
-        volume={() => musicVolume}
+        volume={() =>
+          musicFadeFrames > 0
+            ? musicVolume * interpolate(
+                frame,
+                [durationInFrames - musicFadeFrames, durationInFrames - 1],
+                [1, 0],
+                { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+              )
+            : musicVolume
+        }
         muted={musicMuted}
       />
 
@@ -150,6 +165,11 @@ export const LandscapeVideo: React.FC<z.infer<typeof shortVideoSchema>> = ({
           </Sequence>
         );
       })}
+      <ClosingBeat
+        title={config.cover?.title}
+        subtitle={config.cover?.subtitle}
+        durationMs={config.paddingBack}
+      />
       <Watermark />
     </AbsoluteFill>
   );
