@@ -165,9 +165,11 @@ export class ShortCreator {
       await this.ffmpeg.saveToMp3(audioStream, tempMp3Path);
       let accepted = false;
       let selectedId = "";
-      for (let attempt = 0; attempt < (config.strictChristianVisuals ? 30 : 12) && !accepted; attempt++) {
+      const strictChristianVisuals = config.strictChristianVisuals ?? true;
+      const maxAttempts = strictChristianVisuals ? 30 : 12;
+      for (let attempt = 0; attempt < maxAttempts && !accepted; attempt++) {
        try {
-        const clip = await this.pexelsApi.findVideo(scene.searchTerms,audioLength,excludeVideoIds,orientation);
+        const clip = await this.pexelsApi.findVideo(scene.searchTerms,audioLength,excludeVideoIds,orientation,undefined,strictChristianVisuals);
         excludeVideoIds.push(clip.id);
         const raw = tempVideoPath+".stock";
         tempFiles.push(raw);
@@ -176,14 +178,14 @@ export class ShortCreator {
         const size = vertical ? "1080:1920" : "1920:1080";
         await runMedia("curl",["--fail","--location","--proto","=https","--max-time","60","--max-filesize","100000000","--output",raw,clip.url]);
         await runMedia("ffmpeg",["-y","-loglevel","error","-i",raw,"-t",String(audioLength+0.2),"-vf",`scale=${size}:force_original_aspect_ratio=increase,crop=${size},setsar=1`,"-an","-threads","2","-preset","ultrafast","-pix_fmt","yuv420p",tempVideoPath],{timeout:90000});
-        accepted = await screenFootage(tempVideoPath,audioLength,config.strictChristianVisuals ?? false);
+        accepted = await screenFootage(tempVideoPath,audioLength,config.strictChristianVisuals ?? true);
         selectedId = clip.id;
       } catch (error) {
         const cause = error instanceof Error ? error.message : String(error);
         logger.warn({videoId,index,stage:"download-or-transcode",reason:cause.slice(0,300).replace(/https?:\/\/\S+/g,"[url]")},"External clip unavailable");
       }
       }
-      if (!accepted) throw new Error("No approved moving footage found for scene " + (index+1));
+      if (!accepted) throw new Error("Stock footage exhausted for scene " + (index+1) + " after " + maxAttempts + " attempts across Pexels, Pixabay, and Wikimedia Commons; no approved moving Christian footage was found.");
       logger.info({videoId,index,selectedId},"Approved scene source");
       usedIds.push(selectedId);
 
