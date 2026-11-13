@@ -43,8 +43,8 @@ export function approvedDevotionalClassification(scores: {label:string;score:num
 // Require a safe top label for every sampled frame and reject uncertain clips.
 export function approvedClassification(scores: {label:string;score:number}[]) {
   const safe = scores.filter(x => safeLabels.includes(x.label)).reduce((total,x) => total+x.score,0);
-  const critical = scores.filter(x => [unsafeLabels[0],unsafeLabels[2],unsafeLabels[3],unsafeLabels[4]].includes(x.label));
-  return { approved: safe >= 0.75 && safeLabels.includes(scores[0]?.label)
+  const critical = scores.filter(x => unsafeLabels.includes(x.label));
+  return { approved: safe >= 0.50 && safeLabels.includes(scores[0]?.label)
     && critical.every(x => x.score < 0.10), safe };
 }
 const loadClassifier = async () => {
