@@ -32,6 +32,7 @@ export class ShortCreator {
     config: RenderConfig;
     id: string;
   }[] = [];
+  private failures = new Map<string, string>();
   constructor(
     private config: Config,
     private remotion: Remotion,
@@ -41,6 +42,10 @@ export class ShortCreator {
     private pexelsApi: PexelsAPI,
     private musicManager: MusicManager,
   ) {}
+
+  public failureMessage(id: string): string | undefined {
+    return this.failures.get(id);
+  }
 
   public status(id: string): VideoStatus {
     const videoPath = this.getVideoPath(id);
@@ -56,6 +61,7 @@ export class ShortCreator {
   public addToQueue(sceneInput: SceneInput[], config: RenderConfig): string {
     // todo add mutex lock
     const id = cuid();
+    this.failures.delete(id);
     this.queue.push({
       sceneInput,
       config,
@@ -79,9 +85,12 @@ export class ShortCreator {
     );
     try {
       await this.createShort(id, sceneInput, config);
+      this.failures.delete(id);
       logger.debug({ id }, "Video created successfully");
     } catch (error: unknown) {
-      logger.error(error, "Error creating video");
+      const message = error instanceof Error ? error.message : String(error);
+      this.failures.set(id, message);
+      logger.error({ videoId: id, error: message }, "Error creating video");
     } finally {
       this.queue.shift();
       this.processQueue();
@@ -185,7 +194,39 @@ export class ShortCreator {
         logger.warn({videoId,index,stage:"download-or-transcode",reason:cause.slice(0,300).replace(/https?:\/\/\S+/g,"[url]")},"External clip unavailable");
       }
       }
-      if (!accepted) throw new Error("Stock footage exhausted for scene " + (index+1) + " after " + maxAttempts + " attempts across Pexels, Pixabay, and Wikimedia Commons; no approved moving Christian footage was found.");
+      if (!accepted) {
+        // Last-resort, bundled stills keep a scene renderable without weakening
+        // the safety or devotional checks applied to downloaded footage.
+        const fallbackPath = path.join(
+          this.config.packageDirPath,
+          "public",
+          "grace",
+          `scene-${index % 6}.jpg`,
+        );
+        if (!fs.existsSync(fallbackPath)) {
+          throw new Error(
+            `Stock footage exhausted for scene ${index + 1} after ${maxAttempts} attempts and bundled fallback image is missing.`,
+          );
+        }
+        const vertical = orientation === OrientationEnum.portrait;
+        const size = vertical ? "1080:1920" : "1920:1080";
+        await runMedia(
+          "ffmpeg",
+          [
+            "-y", "-loglevel", "error", "-loop", "1", "-i", fallbackPath,
+            "-t", String(audioLength + 0.2),
+            "-vf", `scale=${size}:force_original_aspect_ratio=increase,crop=${size},setsar=1`,
+            "-r", "30", "-an", "-threads", "2", "-preset", "ultrafast",
+            "-pix_fmt", "yuv420p", tempVideoPath,
+          ],
+          { timeout: 90000 },
+        );
+        selectedId = `bundled-still-${index % 6}`;
+        logger.warn(
+          { videoId, index, attempts: maxAttempts, fallback: path.basename(fallbackPath) },
+          "Stock footage exhausted; using bundled still-image fallback",
+        );
+      }
       logger.info({videoId,index,selectedId},"Approved scene source");
       usedIds.push(selectedId);
 
