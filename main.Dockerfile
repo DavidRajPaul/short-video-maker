@@ -67,6 +67,7 @@ RUN pnpm build
 
 FROM base
 COPY static /app/static
+COPY public/grace /app/public/grace
 COPY --from=install-whisper /whisper /app/data/libs/whisper
 COPY --from=prod-deps /app/node_modules /app/node_modules
 COPY --from=build /app/dist /app/dist

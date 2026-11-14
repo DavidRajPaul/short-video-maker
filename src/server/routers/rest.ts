@@ -89,8 +89,10 @@ export class APIRouter {
           return;
         }
         const status = this.shortCreator.status(videoId);
+        const error = status === "failed" ? this.shortCreator.failureMessage(videoId) : undefined;
         res.status(200).json({
           status,
+          ...(error ? { error } : {}),
         });
       },
     );
