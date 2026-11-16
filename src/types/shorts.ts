@@ -99,7 +99,17 @@ export enum MusicVolumeEnum {
   high = "high",
 }
 
+export const bibleQuizCard = z.object({
+  question: z.string().trim().min(5).max(180),
+  choices: z.tuple([z.string().trim().min(1).max(48), z.string().trim().min(1).max(48), z.string().trim().min(1).max(48)]),
+  hook: z.string().trim().max(100).optional(),
+  cta: z.string().trim().max(100).optional(),
+});
+export type BibleQuizCard = z.infer<typeof bibleQuizCard>;
+
 export const renderConfig = z.object({
+  quizCard: bibleQuizCard.optional()
+    .describe("Quiz-specific persistent question/options panel with animated funny background; skips per-word captions."),
   narrationProfile: narrationProfile.optional()
     .describe("Opt into Kokoro-safe segmented narration; defaults uplifting, 75%, 0.9x speed."),
   speechSpeed: z.number().min(0.75).max(1.2).optional()
