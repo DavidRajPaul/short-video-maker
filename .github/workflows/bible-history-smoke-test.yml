@@ -1,0 +1,21 @@
+name: Temporary Bible history integration smoke test
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/bible-history-smoke-test.yml'
+      - 'tools/bible-brain-teaser/test-history-api.mjs'
+permissions:
+  contents: read
+jobs:
+  history-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test real n8n Google Sheets credentials without publishing
+        run: node tools/bible-brain-teaser/test-history-api.mjs
