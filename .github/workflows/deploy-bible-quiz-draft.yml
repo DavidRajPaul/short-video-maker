@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/deploy-bible-quiz-draft.yml'
+      - 'tools/bible-brain-teaser/n8n-bible-teaser-4pm-draft.json'
   workflow_dispatch:
     inputs:
       apply:
