@@ -38,3 +38,18 @@ Stage A: contract, validation, dedupe, sample storyboard, tests (this PR).
 Stage B: Google Sheets history adapter, n8n candidates, scripture and semantic checks.
 Stage C: Bible illustrations + Kokoro/Remotion integration.
 Stage D: private platform tests then optionally enable a fourth daily slot.
+
+## V2 preview design adjustments (Nov 16, 2026)
+
+Second local MP4 preview supplied in ChatGPT: 18s, 720x1280, 30 FPS, H.264/AAC with faststart. Keep existing three live slots unchanged.
+
+Rendering rules for future Remotion implementation:
+- Use a large quiz card with a generous minimum 24 px interior horizontal margin at 540px base width.
+- Create independently measured bounding boxes for title, question, answer buttons, and CTA. Do not allow text outside its assigned bounding box.
+- Fit font sizes to measured widths, line counts and heights, and wrap on words (never clip or overflow).
+- Favor heavy playful display headings (Inter Black used in local V2 preview); body text must stay readable on phone screens.
+- The answer should not appear in on-screen cards or narration. Keep it in the description after the viewer's comment prompt.
+- Export mobile-safe H.264 yuv420p + AAC with faststart, 30 FPS, vertical aspect ratio.
+- Verify extreme-length questions and four/five-line variants before merging render integration.
+
+Note: V2 is currently a local preview render, not a connected Railway production render. The draft PR remains unmerged and has no n8n workflow changes.
