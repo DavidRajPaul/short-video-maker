@@ -17,6 +17,7 @@ test("Google Sheets history is read and reserved before private rendering",()=>{
  assert.equal(read.parameters.documentId.value,"1GEw7bdgmqC9bb6lfAdJV9ILkRa23qSbW_-6nn6XHqSk");
  assert.equal(read.parameters.sheetName.value,"Bible_Puzzle_History");
  assert.equal(save.parameters.sheetName.value,"Bible_Puzzle_History");
+ assert.deepEqual(save.parameters.columns.schema.map(col=>col.id),Object.keys(save.parameters.columns.value));
  assert.equal(read.alwaysOutputData,true);
  const links=n=>workflow.connections[n]?.main?.[0]?.[0]?.node;
  assert.equal(links("Read Bible Puzzle History"),"Choose Unused Verified Puzzle");
