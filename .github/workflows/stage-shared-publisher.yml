@@ -8,6 +8,7 @@ permissions:
   contents: read
 jobs:
   stage:
+    if: ${{ github.event.pull_request.head.sha == '01dd80253ab69830ac9fddcc6ae00ead222be0f6' }}
     runs-on: ubuntu-latest
     timeout-minutes: 6
     env:
