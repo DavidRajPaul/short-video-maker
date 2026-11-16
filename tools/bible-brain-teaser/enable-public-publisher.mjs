@@ -264,7 +264,7 @@ const live=reachable("When called by a content slot");
 for(const name of ["Public YouTube Upload","FB Reel Finish Upload","IG Publish"]){
  if(!live.has(name))throw Error("Public branch missing from graph: "+name);
 }
-if(!nodes.find(n=>n.name==="Upload a video")?.parameters?.options?.privacyStatus==="private")throw Error("Private QA YouTube path changed");
+if(nodes.find(n=>n.name==="Upload a video")?.parameters?.options?.privacyStatus!=="private")throw Error("Private QA YouTube path changed");
 if(!nodes.find(n=>n.name==="Public YouTube Upload")?.parameters?.options?.privacyStatus==="public")throw Error("Public YouTube upload not configured");
 if(nodes.some(n=>!n.disabled&&/scheduleTrigger|webhook/.test(n.type)))throw Error("Shared publisher cannot have an external schedule/webhook");
 if(!edges["Read Publication Attempts"]?.main?.[0]?.length || !edges["Append Publish Claim Before Upload"]?.main?.[0]?.length)throw Error("Claim ledger disconnected");
