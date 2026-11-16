@@ -16,6 +16,7 @@ on:
 permissions:
   contents: read
   issues: write
+  statuses: write
 
 jobs:
   sync-private-draft:
@@ -71,4 +72,30 @@ jobs:
             body:JSON.stringify({body})
           });
           if (!response.ok) throw new Error('Could not post CI status: ' + response.status);
+          JS
+      - name: Emit GitHub commit status for verification
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SYNC_RESULT: ${{ job.status }}
+        run: |
+          node --input-type=module <<'JS'
+          const repo = process.env.GITHUB_REPOSITORY;
+          const sha = process.env.GITHUB_SHA;
+          const state = process.env.SYNC_RESULT === 'success' ? 'success' : 'failure';
+          const response = await fetch('https://api.github.com/repos/' + repo + '/statuses/' + sha, {
+            method:'POST',
+            headers:{
+              authorization:'Bearer ' + process.env.GH_TOKEN,
+              accept:'application/vnd.github+json',
+              'content-type':'application/json',
+              'x-github-api-version':'2022-11-28'
+            },
+            body:JSON.stringify({
+              state,context:'bible-quiz-n8n-sync',
+              description:state === 'success' ? 'Private n8n draft sync validated' : 'Private n8n draft sync failed; see Actions',
+              target_url:'https://github.com/' + repo + '/actions/runs/' + process.env.GITHUB_RUN_ID
+            })
+          });
+          if(!response.ok) throw new Error('GitHub commit status failed: '+response.status);
           JS
