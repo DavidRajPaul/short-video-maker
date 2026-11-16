@@ -1,0 +1,21 @@
+name: Extend shared publisher with Meta draft ingestion QA
+on:
+  pull_request:
+    paths:
+      - 'tools/bible-brain-teaser/extend-shared-publisher-meta.mjs'
+      - '.github/workflows/extend-shared-publisher-meta.yml'
+permissions:
+  contents: read
+jobs:
+  extend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tools/bible-brain-teaser/extend-shared-publisher-meta.mjs
+      - run: node tools/bible-brain-teaser/extend-shared-publisher-meta.mjs
