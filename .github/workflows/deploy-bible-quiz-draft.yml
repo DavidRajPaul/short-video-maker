@@ -20,7 +20,7 @@ permissions:
 jobs:
   sync-private-draft:
     runs-on: ubuntu-latest
-    timeout-minutes: 16
+    timeout-minutes: 20
     env:
       N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
     steps:
@@ -41,6 +41,11 @@ jobs:
         env:
           APPLY: 'true'
         run: node tools/bible-brain-teaser/sync-n8n-private.mjs
+      - name: Let Railway auto-deployment from main settle before render
+        if: ${{ github.event_name == 'push' || inputs.apply == true }}
+        run: |
+          echo 'Waiting for Railway deployment caused by this GitHub commit to settle.'
+          sleep 150
       - name: Verify a real PRIVATE Bible quiz render and its audio/video streams
         if: ${{ github.event_name == 'push' || inputs.apply == true }}
         run: node tools/bible-brain-teaser/test-private-render.mjs
