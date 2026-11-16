@@ -1,0 +1,31 @@
+name: Deploy Bible quiz private draft to n8n
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Set true to update ONLY the inactive six-node Bible quiz draft; false is dry run'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync-private-draft:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: bible-quiz-staging
+    env:
+      N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+      APPLY: ${{ inputs.apply }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check workflow contract
+        run: node --test tools/bible-brain-teaser/*.test.mjs
+      - name: Sync only the inactive preview with reused Google Sheets credential
+        run: node tools/bible-brain-teaser/sync-n8n-private.mjs
