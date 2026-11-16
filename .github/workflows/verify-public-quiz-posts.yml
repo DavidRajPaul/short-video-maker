@@ -1,8 +1,6 @@
 name: Publish and verify one Bible quiz on YouTube Facebook Instagram
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/verify-public-quiz-posts.yml'
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
