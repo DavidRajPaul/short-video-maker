@@ -14,7 +14,7 @@ if(!original.activeVersionId)throw Error("Original 3 Slots not published");
 if(!shared.activeVersionId||shared.nodes.length!==36)throw Error("Shared publishing subworkflow not published");
 if(other.activeVersionId)throw Error("Old six-node quiz schedule unexpectedly published; risk duplicate");
 const nodes=structuredClone(source.nodes),edges=structuredClone(source.connections??{});
-if(nodes.length!==17||source.settings?.timezone!=="Asia/Kolkata")throw Error("Unexpected 4 PM archive workflow");
+if(![17,20].includes(nodes.length)||source.settings?.timezone!=="Asia/Kolkata")throw Error("Unexpected 4 PM archive workflow");
 const schedule=nodes.filter(n=>n.type==="n8n-nodes-base.scheduleTrigger"&&!n.disabled);
 if(schedule.length!==1||schedule[0].parameters.rule.interval[0].expression!=="0 16 * * *")throw Error("Expected one daily 16:00 IST trigger");
 const gate="QUIZ NO PUBLISHING - Manual Platform QA Gate";
