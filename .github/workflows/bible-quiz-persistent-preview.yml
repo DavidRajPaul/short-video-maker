@@ -1,0 +1,52 @@
+name: Bible Quiz Persistent Card Private Preview
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/bible-quiz-persistent-preview.yml'
+      - 'src/components/videos/BibleQuizVideo.tsx'
+      - 'src/components/videos/PortraitVideo.tsx'
+      - 'src/short-creator/ShortCreator.ts'
+      - 'src/types/shorts.ts'
+      - 'src/components/utils.ts'
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install ffprobe/FFmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Allow Railway to deploy the merged renderer version
+        run: sleep 180
+      - name: Generate one private quiz MP4 and verify media
+        id: render
+        run: node tools/bible-brain-teaser/test-private-render.mjs
+      - name: Capture question and options during and at end of video
+        if: steps.render.outcome == 'success'
+        run: |
+          duration=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 /tmp/bible-quiz-private.mp4)
+          echo "Video duration: $duration seconds"
+          ffmpeg -y -v error -ss 2 -i /tmp/bible-quiz-private.mp4 -frames:v 1 /tmp/bible-quiz-hook.png
+          ffmpeg -y -v error -ss 6 -i /tmp/bible-quiz-private.mp4 -frames:v 1 /tmp/bible-quiz-question.png
+          ffmpeg -y -v error -ss 13 -i /tmp/bible-quiz-private.mp4 -frames:v 1 /tmp/bible-quiz-options.png
+          ffmpeg -y -v error -sseof -2 -i /tmp/bible-quiz-private.mp4 -frames:v 1 /tmp/bible-quiz-end.png
+      - uses: actions/upload-artifact@v4
+        if: steps.render.outcome == 'success'
+        with:
+          name: bible-quiz-persistent-card-qa
+          path: |
+            /tmp/bible-quiz-hook.png
+            /tmp/bible-quiz-question.png
+            /tmp/bible-quiz-options.png
+            /tmp/bible-quiz-end.png
+          retention-days: 3
