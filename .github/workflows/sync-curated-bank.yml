@@ -1,9 +1,6 @@
 name: Sync curated Bible quizzes to active 4PM workflow
 on:
-  pull_request:
-    paths:
-      - 'tools/bible-brain-teaser/sync-curated-bank.mjs'
-      - '.github/workflows/sync-curated-bank.yml'
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
