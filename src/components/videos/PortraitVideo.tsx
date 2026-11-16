@@ -1,3 +1,4 @@
+import { BibleQuizVideo } from "./BibleQuizVideo";
 import { GraceCover } from "./GraceCover";
 import { ClosingBeat } from "./ClosingBeat";
 import { Watermark } from "./Watermark";
