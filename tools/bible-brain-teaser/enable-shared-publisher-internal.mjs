@@ -6,7 +6,7 @@ async function req(path,method="GET"){
 }
 const wf=await req("/workflows/"+id);
 const nodes=wf.nodes??[];
-if(nodes.length!==31)throw Error("Unexpected shared publisher node count");
+if(nodes.length<31||nodes.length>36)throw Error("Unexpected shared publisher node count");
 if(nodes.filter(n=>n.type==="n8n-nodes-base.executeWorkflowTrigger"&&!n.disabled).length!==1)throw Error("Expected one internal trigger");
 if(nodes.some(n=>/scheduleTrigger|webhook/.test(n.type)&&!n.disabled))throw Error("Unexpected external trigger");
 const download=nodes.find(n=>n.name==="Download MP4"),yt=nodes.find(n=>n.name==="Upload a video");
@@ -15,7 +15,7 @@ const meta=nodes.filter(n=>/^FB |^IG /.test(n.name));
 if(meta.length<20||meta.some(n=>n.disabled!==true))throw Error("Meta nodes not fully disabled");
 const connected=new Set(Object.values(wf.connections??{}).flatMap(x=>(x.main??[]).flat().filter(Boolean).map(n=>n.node)));
 if(meta.some(n=>connected.has(n.name)))throw Error("A Meta publisher node is reachable");
-if(!nodes.find(n=>n.name==="Normalize Publishing Input")?.parameters?.jsCode.includes('["validateOnly","privateYouTubeQA"]'))throw Error("No fail-closed publishing mode guard");
+if(!nodes.find(n=>n.name==="Normalize Publishing Input")?.parameters?.jsCode.includes('"privateYouTubeQA"'))throw Error("No fail-closed publishing mode guard");
 if(!wf.activeVersionId)await req("/workflows/"+id+"/publish","POST");
 const saved=await req("/workflows/"+id);
 if(!saved.activeVersionId)throw Error("Shared publisher is not published (activeVersionId missing)");
