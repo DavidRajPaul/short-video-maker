@@ -18,6 +18,12 @@ const [original,shared,quiz]=await Promise.all([
 ]);
 if(!original.activeVersionId||!shared.activeVersionId||!quiz.activeVersionId)
  throw Error("All original, shared and quiz workflows must already be published");
+if(shared.nodes.length===58 && quiz.nodes.length===29 &&
+   shared.nodes.some(n=>n.name==="Read Publication Attempts") &&
+   shared.nodes.some(n=>n.name==="Public YouTube Upload")){
+ console.log("SHARED PUBLIC PUBLISHER ALREADY DEPLOYED; no mutation");
+ process.exit(0);
+}
 if(shared.nodes.length!==36 || quiz.nodes.length!==20)
  throw Error("Unexpected shared publisher or quiz workflow node count");
 const nodes=structuredClone(shared.nodes);
