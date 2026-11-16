@@ -39,3 +39,12 @@ test("answer kept out of the video but included in description", () => {
   assert.ok(!plan.scenes.some(s => JSON.stringify(s).includes("It was Noah")));
   assert.ok(buildDescription(EXAMPLE).includes("✅ ANSWER:"));
 });
+
+test("teaser voice is Kokoro am_michael with expressive pacing", () => {
+  const plan = buildRenderPlan(EXAMPLE);
+  assert.equal(plan.narration.engine, "kokoro");
+  assert.equal(plan.narration.voiceId, "am_michael");
+  assert.equal(plan.narration.placeholderTtsAllowed, false);
+  assert.equal(plan.narration.musicDucking, true);
+  assert.equal(plan.narration.fitVideoToSpeech, true);
+});
