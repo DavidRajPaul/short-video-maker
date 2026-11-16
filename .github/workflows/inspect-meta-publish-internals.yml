@@ -1,0 +1,19 @@
+name: Inspect original FB and IG publisher internals safely
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/inspect-meta-publish-internals.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tools/bible-brain-teaser/inspect-meta-internals.mjs
