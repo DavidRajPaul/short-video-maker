@@ -9,6 +9,22 @@ async function api(path, method="GET", body) {
   if(!r.ok)throw new Error(method+" "+path+" HTTP "+r.status+": "+s.slice(0,250));
   return s?JSON.parse(s):{};
 }
+async function cleanTemp(id) {
+  let wf;
+  try { wf=await api("/workflows/"+id); } catch(e) {
+    if(e.message.includes("HTTP 404"))return;
+    throw e;
+  }
+  if(!wf.name.startsWith("TEMP Bible history smoke test "))throw new Error("Refusing to clean unknown workflow "+id);
+  try { if(wf.active)await api("/workflows/"+id+"/deactivate","POST"); } catch(e) {console.error("Deactivate temporary workflow:",e.message);}
+  for(let i=0;i<10;i++){
+    try {await api("/workflows/"+id,"DELETE"); console.log("Deleted temporary workflow",id);return;}
+    catch(e){if(!e.message.includes("HTTP 409"))throw e;await new Promise(ok=>setTimeout(ok,2000));}
+  }
+  throw new Error("Temporary workflow cleanup did not complete "+id);
+}
+// Clean up previous test (n8n was still unpublishing during its first delete).
+await cleanTemp("cTzwf8aTVtSr6WZH");
 const original=await api("/workflows/TCMiKoaj2xkNvK1L");
 const cred=original.nodes.find(n=>n.type==="n8n-nodes-base.googleSheets"&&n.credentials?.googleSheetsOAuth2Api?.id)?.credentials.googleSheetsOAuth2Api;
 if(!cred)throw new Error("No valid original Google Sheets credential reference");
@@ -44,13 +60,20 @@ try {
     const result=await api("/executions?workflowId="+encodeURIComponent(id)+"&limit=5");
     const execution=result.data?.[0];
     if(execution?.status==="success"){execStatus="success";passed=true;break;}
-    if(["error","crashed","canceled"].includes(execution?.status??"")){execStatus=execution.status;break;}
+    if(["error","crashed","canceled"].includes(execution?.status??"")){
+      execStatus=execution.status;
+      try {
+        const detail=await api("/executions/"+execution.id+"?includeData=true");
+        const err=detail.data?.resultData?.error ?? {};
+        console.error("FAILED NODE:",err.node?.name??"unknown","MESSAGE:",String(err.message??"unknown").slice(0,350));
+      }catch(e){console.error("Execution detail unavailable:",e.message);}
+      break;
+    }
   }
   if(!passed)throw new Error("History read/append integration failed or timed out; execution status="+execStatus);
   console.log("BIBLE HISTORY READ+APPEND SUCCEEDED in isolated temporary workflow, using existing credentials.");
 } finally {
   if(id){
-    try{if(activated)await api("/workflows/"+id+"/deactivate","POST");}catch(e){console.error("deactivate failed:",e.message);}
-    try{await api("/workflows/"+id,"DELETE");console.log("Temporary workflow deleted:",id);}catch(e){console.error("DELETE TEMP WORKFLOW FAILED:",id,e.message);}
+    try{await cleanTemp(id);}catch(e){console.error("DELETE TEMP WORKFLOW FAILED:",id,e.message);}
   }
 }
