@@ -37,6 +37,7 @@ const trigger={id:randomUUID(),name:"Temporary Test Webhook",type:"n8n-nodes-bas
 const get=copy(read);get.id=randomUUID();get.position=[450,200];get.credentials={googleSheetsOAuth2Api:cred};
 const prep={id:randomUUID(),name:"Build Temporary Test Row",type:"n8n-nodes-base.code",typeVersion:2,position:[700,200],parameters:{mode:"runOnceForAllItems",jsCode:"return [{json:{ledger:{puzzle_id:'smoke-'+$execution.id,canonical_concept:'smoke-test-'+$execution.id,answer_fact_id:'smoke-fact-'+$execution.id,question_normalized:'temporary integration test',question_fingerprint:'smoke-'+$execution.id,question:'Temporary integration test: not published',answer:'not applicable',scripture_reference:'N/A',status:'test-only',created_at_utc:new Date().toISOString(),published_at_utc:'',platform_urls:''}}}];"}};
 const save=copy(append);save.id=randomUUID();save.position=[950,200];save.credentials={googleSheetsOAuth2Api:cred};
+save.parameters.columns.schema=Object.keys(save.parameters.columns.value).map(id=>({id,displayName:id,required:false,defaultMatch:false,display:true,type:"string",canBeUsedToMatch:true}));
 const nodes=[trigger,get,prep,save];
 const connections={};
 for(let i=0;i<nodes.length-1;i++)connections[nodes[i].name]={main:[[{node:nodes[i+1].name,type:"main",index:0}]]};
