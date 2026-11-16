@@ -29,6 +29,9 @@ const clone=(name,newName)=>{
 const template=JSON.parse(await fs.readFile(new URL("./n8n-bible-teaser-4pm-draft.json",import.meta.url),"utf8"));
 if(template.nodes.length!==6||template.settings?.timezone!=="Asia/Kolkata"||template.nodes[0].parameters.rule.interval[0].expression!=="0 16 * * *")throw Error("Unexpected private quiz contract");
 const nodes=structuredClone(template.nodes);
+const sheetCredential=original.nodes.find(n=>n.type==="n8n-nodes-base.googleSheets"&&n.credentials?.googleSheetsOAuth2Api?.id)?.credentials.googleSheetsOAuth2Api;
+if(!sheetCredential)throw Error("Original workflow Google Sheets credential reference missing");
+for(const n of nodes.filter(n=>n.type==="n8n-nodes-base.googleSheets"))n.credentials={googleSheetsOAuth2Api:{id:sheetCredential.id,name:sheetCredential.name}};
 const connections=structuredClone(template.connections);
 const link=(a,b,output=0)=>{
  if(!connections[a])connections[a]={main:[]};
