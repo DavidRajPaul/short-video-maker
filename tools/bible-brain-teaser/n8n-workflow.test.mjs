@@ -48,3 +48,19 @@ test("history avoids exact, canonical, and answer-fact repetitions",()=>{
  const all=bank.map(p=>({puzzle_id:p[0]}));
  assert.throws(()=>run(all),/bank exhausted/);
 });
+
+test("curated Bible bank supports at least two months without fact repeats",()=>{
+ const bank=JSON.parse(choose.parameters.jsCode.match(/const BANK=(\\[[^;]+\\]);/)[1]);
+ assert.ok(bank.length>=70,"Daily quiz needs at least 70 approved questions");
+ const ids=new Set(),concepts=new Set(),facts=new Set();
+ for(const p of bank){
+  assert.equal(p.length,9);
+  assert.ok(!ids.has(p[0]),"duplicate puzzle ID "+p[0]);
+  assert.ok(!concepts.has(p[2]),"duplicate concept "+p[2]);
+  assert.ok(!facts.has(p[3]),"duplicate answer fact "+p[3]);
+  assert.equal(p[5].length,3);
+  assert.ok(["A","B","C"].includes(p[6]));
+  assert.match(p[8],/\\d/);
+  ids.add(p[0]);concepts.add(p[2]);facts.add(p[3]);
+ }
+});
