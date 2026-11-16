@@ -1,0 +1,20 @@
+name: Bible Quiz Private YouTube Upload Test
+on:
+  push:
+    branches: [feature/bible-quiz-publisher-staging]
+    paths:
+      - 'tools/bible-brain-teaser/test-youtube-private.mjs'
+permissions:
+  contents: read
+jobs:
+  private-upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tools/bible-brain-teaser/test-youtube-private.mjs
