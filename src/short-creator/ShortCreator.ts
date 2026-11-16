@@ -152,7 +152,13 @@ export class ShortCreator {
         const segmentPath = path.join(this.config.tempDirPath, `${tempId}-segment-${segmentIndex}.wav`);
         tempFiles.push(segmentPath);
         await this.ffmpeg.saveNormalizedAudio(speech.audio, segmentPath);
-        const segmentCaptions = await this.whisper.CreateCaption(segmentPath);
+        // Bible Brain Teaser shows a persistent question/options card instead of
+        // word-by-word subtitle pages. Skip Whisper entirely for quiz requests:
+        // Whisper timestamps can exceed short Kokoro audio segments and abort
+        // otherwise valid videos. Devotional subtitles retain their behavior.
+        const segmentCaptions = config.quizCard
+          ? []
+          : await this.whisper.CreateCaption(segmentPath);
         const wav = fs.readFileSync(segmentPath);
         speechSegments.push({
           wav: Uint8Array.from(wav).buffer,
