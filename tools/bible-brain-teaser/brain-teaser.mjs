@@ -100,6 +100,17 @@ export function buildRenderPlan(puzzle) {
     status: "preview-only",
     artworkPrompt: puzzle.backgroundPrompt || "Cheerful respectful family-friendly Bible scene, bright colorful 3D illustration, no text, space for quiz overlay",
     musicMood: "playful light Christian family quiz, not dramatic",
+    narration: {
+      engine: "kokoro",
+      voiceId: "am_michael",
+      language: "en-US",
+      speed: 1.0,
+      style: "warm, upbeat, conversational quiz host",
+      pauseMs: { afterQuestion: 350, betweenOptions: 220, beforeCta: 280 },
+      musicDucking: true,
+      placeholderTtsAllowed: false,
+      fitVideoToSpeech: true
+    },
     scenes: [
       { start: 0, end: 3, title: "BIBLE BRAIN TEASER!", narration: "Think you know your Bible?" },
       { start: 3, end: 8, title: "TRICK QUESTION!", text: puzzle.question, narration: puzzle.question },
