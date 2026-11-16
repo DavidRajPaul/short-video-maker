@@ -31,6 +31,10 @@ test("no video publishing or uploaded answers in the render pipeline",()=>{
  assert.equal(item.autoPublish,false);
  assert.equal(item.renderRequest.config.voice,"am_michael");
  assert.equal(item.renderRequest.config.orientation,"portrait");
+ assert.equal(item.renderRequest.config.quizCard.question,item.question);
+ assert.equal(item.renderRequest.config.quizCard.choices.length,3);
+ assert.equal(item.renderRequest.config.quizCard.hook,"A little Bible trick question!");
+ assert.equal(item.renderRequest.config.quizCard.cta,"Comment A, B or C!");
  assert.match(item.caption,/ANSWER:/);
  assert.ok(item.renderRequest.scenes.every(s=>!s.text.includes(item.answer) && !s.text.includes("ANSWER:")));
 });
