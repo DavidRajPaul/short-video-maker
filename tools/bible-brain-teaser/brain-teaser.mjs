@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 export const FORMATS = ["trick", "who-am-i", "true-or-false", "numbers", "spot-the-mistake", "visual-clues", "this-or-that"];
 
 export function normalize(value) {
-  return String(value ?? "").normalize("NFKC").toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, " ").trim().replace(/\\s+/g, " ");
+  return String(value ?? "").normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim().replace(/\s+/g, " ");
 }
 
 export function fingerprint(value) {
@@ -66,7 +66,7 @@ export function validatePuzzle(puzzle, history = []) {
 
 export function buildDescription(puzzle) {
   // The answer is below a separator; platforms do NOT guarantee it will be hidden.
-  const options = (puzzle.options ?? []).map((option, index) => `${String.fromCharCode(65 + index)}. ${option}`).join("\\n");
+  const options = (puzzle.options ?? []).map((option, index) => `${String.fromCharCode(65 + index)}. ${option}`).join("\n");
   return [
     "🧠 BIBLE BRAIN TEASER!",
     "",
@@ -85,7 +85,7 @@ export function buildDescription(puzzle) {
     puzzle.explanation ?? "",
     "",
     "#BibleQuiz #BibleTrivia #GraceInAMinute"
-  ].filter((line) => line !== null).join("\\n");
+  ].filter((line) => line !== null).join("\n");
 }
 
 export function buildRenderPlan(puzzle) {
@@ -103,8 +103,8 @@ export function buildRenderPlan(puzzle) {
     scenes: [
       { start: 0, end: 3, title: "BIBLE BRAIN TEASER!", narration: "Think you know your Bible?" },
       { start: 3, end: 8, title: "TRICK QUESTION!", text: puzzle.question, narration: puzzle.question },
-      { start: 8, end: 13, title: "CHOOSE YOUR ANSWER", text: options.join("\\n"), narration: options.join(". ") },
-      { start: 13, end: 18, title: "YOUR TURN!", text: "Comment your answer!\\nThen check the description.", narration: "Comment your answer. Then check the description!" }
+      { start: 8, end: 13, title: "CHOOSE YOUR ANSWER", text: options.join("\n"), narration: options.join(". ") },
+      { start: 13, end: 18, title: "YOUR TURN!", text: "Comment your answer!\nThen check the description.", narration: "Comment your answer. Then check the description!" }
     ],
     description: buildDescription(puzzle),
     answerShownInVideo: false,
