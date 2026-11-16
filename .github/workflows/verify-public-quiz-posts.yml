@@ -1,0 +1,18 @@
+name: Publish and verify one Bible quiz on YouTube Facebook Instagram
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-public:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    env:
+      N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tools/bible-brain-teaser/test-public-quiz-posts.mjs
+      - run: node tools/bible-brain-teaser/test-public-quiz-posts.mjs

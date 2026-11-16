@@ -1,65 +1,77 @@
-# Reusable Grace In A Minute publisher — integration state
+# Grace In A Minute — Shared publishing and daily Bible quiz
 
-## Workflows
+## Production status: 2026-11-16
 
-- **Original production (untouched):** `TCMiKoaj2xkNvK1L`, FINAL 3 Slots.
-- **4 PM quiz & ImageKit archival workflow:** `nB10Ub0ZIxCe5gHI`, 20 nodes, published, cron `0 16 * * *`, timezone `Asia/Kolkata`.
-- **Internal shared publisher:** `UyXSFUjWdkjuqK1p`, published, 36 nodes, `executeWorkflowTrigger` with `inputSource: passthrough`. No schedule or webhooks.
-- **Old six-node quiz preview:** `iEiu5vka5sAVMxMl`, unpublished and unused.
+**4 PM Bible quiz is publicly enabled for YouTube, Facebook and Instagram.**
 
-The shared publisher is extracted from the real production YouTube, Facebook and Instagram nodes and **reuses their credential references within n8n**. No account access tokens are committed to GitHub.
+| Workflow | n8n ID | State |
+| --- | --- | --- |
+| Original FINAL 3 Slots | `TCMiKoaj2xkNvK1L` | Active; original publishing nodes unchanged |
+| 4 PM Bible Brain Teaser | `nB10Ub0ZIxCe5gHI` | Active; daily 16:00 Asia/Kolkata, 29 nodes |
+| Reusable internal publisher | `UyXSFUjWdkjuqK1p` | Published; 58 nodes; no external trigger |
+| Old six-node quiz draft | `iEiu5vka5sAVMxMl` | Unpublished; does not run |
+
+The original FINAL 3 Slots has **not** yet been migrated to the shared publisher. It keeps using its existing public upload nodes. The 4 PM quiz calls the shared publisher independently three times, once per platform, after private Railway render and permanent ImageKit MP4 archiving.
 
 ## Input contract
-
-Call the shared publisher using an Execute Sub-workflow node with one JSON object:
 
 ```json
 {
   "publisherInput": {
     "contentId": "jonah-great-fish",
     "contentType": "bible_quiz",
-    "videoUrl": "https://ik.imagekit.io/.../video.mp4",
-    "title": "Bible Brain Teaser | Who spent three days inside a great fish?",
-    "description": "Question and options ...\n\nANSWER: Jonah. Jonah 1:17.",
+    "videoUrl": "https://ik.imagekit.io/.../quiz.mp4",
+    "title": "Bible Brain Teaser | Jonah and the Great Fish",
+    "description": "Question and options...\nANSWER: B. Jonah. Scripture: Jonah 1:17.",
     "tags": ["BibleQuiz", "GraceInAMinute"],
-    "mode": "validateOnly"
+    "mode": "publishFacebook"
   }
 }
 ```
 
-Supported modes and *verified behaviour*:
+Modes: `validateOnly`, `privateYouTubeQA`, `draftMeta`, `publishYouTube`, `publishFacebook`, `publishInstagram`.
 
-| Mode | Actual result |
-| --- | --- |
-| `validateOnly` | Schema and answer/reference guard. No platform request. **Passed** real parent→child execution. |
-| `privateYouTubeQA` | Downloads ImageKit MP4, uploads to YouTube with `privacyStatus=private`. **Passed** with independent read-back of YouTube privacy and description. |
-| `draftMeta` | Creates an IG media container and Facebook Reel upload session, transfers the hosted MP4 using the `file_url` header. **Passed**, without invoking IG Publish or FB Finish. |
+Public modes are guarded by the `Bible_Publish_Attempts` tab in the existing Bible Database spreadsheet: `1GEw7bdgmqC9bb6lfAdJV9ILkRa23qSbW_-6nn6XHqSk`. A `claimed` event is appended **before** any remote public API call, and a `published` or `uncertain` event is appended when a result is available. If the same content ID/platform already has a claim, the shared publisher stops. **Do not automatically retry an uncertain post**: reconcile the remote platform ID with the ledger first. This is intentional fail-closed deduplication.
 
-There is **no `publicAll` mode yet**. All Facebook finish and Instagram publish nodes remain disabled/disconnected. YouTube privacy is fixed to Private. This prevents accidental public uploads.
+### Verified public test (2026-11-16)
 
-## Original three slots
+A single archived Jonah puzzle was published using the shared publisher's actual end-to-end modes:
 
-The three-slot workflow has not been switched to the shared publisher: it still follows the existing direct upload graph. Once the shared workflow's public-publish path, logging, and retry logic pass real end-to-end tests, modify the original three-slot routing in a separate change and verify that all three original slots still publish before removing the old graph. Avoid making that migration at the same time as the new quiz's first public post.
+- YouTube: `https://www.youtube.com/watch?v=WkBbdVRPFb0`
+- Facebook: `https://www.facebook.com/reel/2637879256674893`
+- Instagram: `https://www.instagram.com/reel/DfzW3jslNvu/`
 
-## Bible quiz flow
+All three public receipts and remote IDs were saved to `Bible_Publish_Attempts`; temporary public test parent workflows were deleted. The private YouTube mode had separately passed metadata/privacy validation; the Meta draft-only modes had also passed without public posting.
 
-The 4 PM workflow now archives MP4 to ImageKit and calls the internal publisher in `validateOnly` mode. The input contains the unique puzzle ID, published-quality ImageKit MP4 URL, quiz title and description (correct answer and Scripture in description only). This confirms the handoff without sending a public post.
+### Scheduled sequence
 
-## Reliability work before public activation
+1. Read `Bible_Puzzle_History`, select an unused approved Bible fact and **reserve** it before rendering.
+2. Render the approved persistent question + A/B/C animated 9:16 card with Kokoro `am_michael`.
+3. Poll Railway until ready and upload MP4 into ImageKit to avoid ephemeral Railway URLs.
+4. Validate shared publisher metadata, then launch independent `publishYouTube`, `publishFacebook`, `publishInstagram` calls.
+5. Each child checks its own platform claim, publishes, writes its own outcome, and returns a receipt.
+6. Each parent platform branch catches errors so a failure on one social platform does not block the other two.
 
-1. Implement IG `media_publish` and Facebook `upload_phase=finish` in the shared workflow and verify the returned published IDs and links.
-2. Add a public YouTube mode, verify correct account, title, privacy, and answer metadata.
-3. Read/write `Bible_Publish_Attempts` in the existing Bible Database (sheet ID `1GEw7bdgmqC9bb6lfAdJV9ILkRa23qSbW_-6nn6XHqSk`). Record one result per platform and content ID. Use platform-specific idempotency to avoid re-uploading YouTube when Facebook fails.
-4. Fail closed if a content ID/platform is already published, and never retry an uncertain post automatically.
-5. Connect the 4 PM workflow to the public publisher only after a controlled end-to-end test. **Do not assume publishing is live from an n8n active flag; verify `activeVersionId` and test execution.**
+The correct answer and Bible reference are in the description, not displayed on-screen.
 
-## Tests and rollback
+### Question bank supply
 
-- Read-only inventory: `inspect-shared-publisher.mjs`.
-- Extract source nodes: `build-shared-publisher.mjs`.
-- Publish internal-only version (validated restrictions): `enable-shared-publisher-internal.mjs`.
-- Add safe Meta draft ingestion: `extend-shared-publisher-meta.mjs`.
-- Private YouTube and Meta ingestion QA tests: dedicated test scripts and GitHub Actions. These are one-time tests and should **not** run on every commit.
-- Connect the quiz handoff: `connect-quiz-shared-publisher.mjs`.
+The quiz currently includes **77 distinct curated fact/concept entries** and a permanent dedupe check. The source of truth is `tools/bible-brain-teaser/n8n-bible-teaser-4pm-draft.json`, with the 69 additional approved entries also stored in `curated-additional-puzzles.json`. The active bank was synced and read-back verified through `sync-curated-bank.mjs`.
 
-Rollback just the quiz handoff by restoring its previous published version in n8n or stopping the 4 PM workflow; the original three-slot publisher is unaffected.
+**This bank is finite.** Replenish with further Scripture-checked unique facts before fewer than 14 remain. Do not repeat a canonical concept or answer-fact ID. Never generate unverified Bible answers for an automatic public post.
+
+### Safety and maintenance
+
+- Use the stored `N8N_API_KEY` GitHub Actions secret; never paste its value into code or chat.
+- GitHub Action public-POST test is **manual-only** and should not be rerun casually; the ledger blocks duplicate posts.
+- Existing three-slot publishing remains unaffected.
+- The shared publisher has no schedule, webhook, or other public trigger. It only handles calls from authenticated n8n workflows.
+- Both deployment scripts are idempotent after successful production activation.
+- Google Sheets and Meta credentials are referenced from the original n8n workflows, not copied as literal secrets into GitHub.
+- The original production publisher-settings node contains a long-lived Meta token literal; rotate that token in n8n separately after verifying the migrated publisher, so it is not embedded in workflow exports.
+
+## Links
+
+- 4 PM workflow: `https://meetdavidraj7.n8n-wsk.com/workflow/nB10Ub0ZIxCe5gHI`
+- Shared publisher: `https://meetdavidraj7.n8n-wsk.com/workflow/UyXSFUjWdkjuqK1p`
+- Original 3 Slots: `https://meetdavidraj7.n8n-wsk.com/workflow/TCMiKoaj2xkNvK1L`
