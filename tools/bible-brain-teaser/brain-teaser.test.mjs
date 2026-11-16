@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { EXAMPLE, normalize, duplicateReason, validatePuzzle, buildDescription, buildRenderPlan } from "./brain-teaser.mjs";
+import { EXAMPLE, normalize, toSpokenText, duplicateReason, validatePuzzle, buildDescription, buildRenderPlan } from "./brain-teaser.mjs";
 
 test("normalization ignores casing and punctuation", () => {
   assert.equal(normalize("Moses' ARK?!"), "moses ark");
@@ -47,4 +47,11 @@ test("teaser voice is Kokoro am_michael with expressive pacing", () => {
   assert.equal(plan.narration.placeholderTtsAllowed, false);
   assert.equal(plan.narration.musicDucking, true);
   assert.equal(plan.narration.fitVideoToSpeech, true);
+});
+
+test("TTS removes visual symbols but preserves spoken punctuation", () => {
+  assert.equal(toSpokenText("🧠 **BIBLE** #Quiz 👇"), "BIBLE");
+  assert.equal(toSpokenText("A. Lions 🦁"), "A. Lions");
+  assert.equal(toSpokenText("Comment your answer! 💬"), "Comment your answer!");
+  assert.equal(toSpokenText("Faith & Hope ✨"), "Faith and Hope");
 });
