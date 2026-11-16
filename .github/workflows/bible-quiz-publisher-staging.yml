@@ -1,8 +1,8 @@
 name: Stage Bible Quiz Cloudinary Archive (NO social publishing)
 on:
-  pull_request:
+  push:
+    branches: [feature/bible-quiz-publisher-staging]
     paths:
-      - '.github/workflows/bible-quiz-publisher-staging.yml'
       - 'tools/bible-brain-teaser/build-publisher-staging.mjs'
 permissions:
   contents: read
