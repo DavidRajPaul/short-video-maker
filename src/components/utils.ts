@@ -25,6 +25,12 @@ export const shortVideoSchema = z.object({
     captionBackgroundColor: z.string().optional(),
     cover: z.object({title:z.string(),scene:z.number(),background:z.string().optional(),subtitle:z.string().optional()}).optional(),
     durationMs: z.number(),
+    quizCard: z.object({
+      question: z.string(),
+      choices: z.tuple([z.string(), z.string(), z.string()]),
+      hook: z.string().optional(),
+      cta: z.string().optional(),
+    }).optional(),
     musicVolume: z.nativeEnum(MusicVolumeEnum).optional(),
   }),
   music: z.object({
