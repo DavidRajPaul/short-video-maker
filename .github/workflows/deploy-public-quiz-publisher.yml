@@ -1,9 +1,6 @@
 name: Deploy guarded public quiz publisher
 on:
-  pull_request:
-    paths:
-      - 'tools/bible-brain-teaser/enable-public-publisher.mjs'
-      - '.github/workflows/deploy-public-quiz-publisher.yml'
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
