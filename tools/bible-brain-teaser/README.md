@@ -73,3 +73,11 @@ For the next production-quality preview:
 ## Approved male voice
 
 User selected Kokoro voice ID `am_michael` for Bible Brain Teaser. The scene render plan now explicitly requests that voice at baseline speed 1.0, with phrase pauses, music ducking and narration-length-aware timing. This is metadata for later renderer integration, not proof of generated audio. Do not merge this preview-only PR assuming that Railway or n8n has been updated. Existing daily slots must retain their current narrator.
+
+## Approved posting time — 4:00 PM IST daily
+
+The approved new slot is **16:00 Asia/Kolkata every day**. File `n8n-bible-teaser-4pm-draft.json` provides an **inactive, importable n8n scaffold** with a schedule trigger, workflow timezone, and a no-publishing guard. It is not connected to the existing FINAL 3 Slots workflow and does not publish content.
+
+Schedule trigger cron: `0 16 * * *` with workflow setting `timezone: Asia/Kolkata` (UTC+05:30; 10:30 UTC). It must be imported as a separate workflow and remain inactive until puzzle generation, complete Google Sheets history, approved Scripture verification, correct Kokoro `am_michael` rendering, and independent platform publishing are tested. Never enable the schedule before the guard is replaced by the validated pipeline.
+
+The existing three video slots stay unchanged. The draft workflow is committed to GitHub only; no active n8n schedule has been created.
