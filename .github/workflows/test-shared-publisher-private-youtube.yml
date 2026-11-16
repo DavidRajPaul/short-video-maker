@@ -1,0 +1,20 @@
+name: Test shared publisher private YouTube upload (once)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/test-shared-publisher-private-youtube.yml'
+permissions:
+  contents: read
+jobs:
+  private-youtube:
+    if: ${{ github.event.pull_request.head.sha == '412583f23b3a7e39ad560401f203fa722fab6df2' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tools/bible-brain-teaser/test-shared-publisher-private-youtube.mjs

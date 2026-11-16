@@ -1,0 +1,24 @@
+name: Stage shared publisher from original 3 slots
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage-shared-publisher.yml'
+      - 'tools/bible-brain-teaser/build-shared-publisher.mjs'
+permissions:
+  contents: read
+jobs:
+  stage:
+    if: ${{ github.event.pull_request.head.sha == '01dd80253ab69830ac9fddcc6ae00ead222be0f6' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate staging script syntax
+        run: node --check tools/bible-brain-teaser/build-shared-publisher.mjs
+      - name: Extract into inactive shared n8n publisher
+        run: node tools/bible-brain-teaser/build-shared-publisher.mjs

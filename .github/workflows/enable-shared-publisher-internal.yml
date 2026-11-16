@@ -1,0 +1,20 @@
+name: Enable internal shared publisher (no public posting)
+on:
+  pull_request:
+    paths:
+      - 'tools/bible-brain-teaser/enable-shared-publisher-internal.mjs'
+      - '.github/workflows/enable-shared-publisher-internal.yml'
+permissions:
+  contents: read
+jobs:
+  enable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tools/bible-brain-teaser/enable-shared-publisher-internal.mjs
