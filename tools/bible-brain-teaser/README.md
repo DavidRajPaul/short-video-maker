@@ -81,3 +81,16 @@ The approved new slot is **16:00 Asia/Kolkata every day**. File `n8n-bible-tease
 Schedule trigger cron: `0 16 * * *` with workflow setting `timezone: Asia/Kolkata` (UTC+05:30; 10:30 UTC). It must be imported as a separate workflow and remain inactive until puzzle generation, complete Google Sheets history, approved Scripture verification, correct Kokoro `am_michael` rendering, and independent platform publishing are tested. Never enable the schedule before the guard is replaced by the validated pipeline.
 
 The existing three video slots stay unchanged. The draft workflow is committed to GitHub only; no active n8n schedule has been created.
+
+## Zero-TinyFish maintenance: GitHub Actions + n8n Public API
+
+No paid browser agent is required for workflow synchronization. The self-hosted n8n API is available in all editions and GitHub Actions can deploy the **unpublished private preview** from this repository.
+
+One-time setup **in your own accounts** (never paste an API key into chat):
+1. In n8n open **Settings → n8n API → Create API key**. Choose an expiry and keep the key private.
+2. In GitHub open **DavidRajPaul/short-video-maker → Settings → Secrets and variables → Actions → New repository secret**. Create the secret `N8N_API_KEY` and paste the key there.
+3. In GitHub **Actions → Deploy Bible quiz private draft to n8n → Run workflow**, choose `apply=false` first (read-only preview). Review the job output. Repeat with `apply=true` to update **only** workflow `iEiu5vka5sAVMxMl`.
+
+The action fetches the existing Google Sheets OAuth credential **reference** from the original `FINAL 3 Slots` workflow, attaches it to both Bible history nodes, and replaces the isolated draft's nodes/connections via the official n8n API. It does not read or print the OAuth token or change the original workflow. The script refuses to modify an already-active target, does not activate the draft, and contains no social publishing nodes. The API key stays in GitHub Actions Secrets.
+
+This is an intermediate step, **not** finished publishing automation. Before activating a future publishing workflow: verify that the quiz caption/answer is preserved through upload, Google Sheets reservation and uniqueness work, actual Kokoro audio and video composition are acceptable, video URLs are publicly accessible to Meta, and YouTube/FB/IG uploads return valid published links. The private preview is intentionally fail-closed.
