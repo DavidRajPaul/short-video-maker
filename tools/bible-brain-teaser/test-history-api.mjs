@@ -31,9 +31,14 @@ try {
   id=w.id;if(!id)throw new Error("n8n didn't return temporary workflow ID");
   await api("/workflows/"+id+"/activate","POST");activated=true;
   const webhook=base+"/webhook/"+trigger.parameters.path;
-  const res=await fetch(webhook,{method:"POST",headers:{"content-type":"application/json"},body:"{}",signal:AbortSignal.timeout(25000)});
-  console.log("Temporary webhook response HTTP",res.status);
-  if(!res.ok)throw new Error("Webhook returned HTTP "+res.status);
+  let res;
+  for(let attempt=1;attempt<=10;attempt++){
+    await new Promise(ok=>setTimeout(ok,3000));
+    res=await fetch(webhook,{method:"POST",headers:{"content-type":"application/json"},body:"{}",signal:AbortSignal.timeout(25000)});
+    console.log("Webhook registration check",attempt,"HTTP",res.status);
+    if(res.status!==404)break; // only retry unregistered webhooks, never an accepted invocation
+  }
+  if(!res.ok)throw new Error("Webhook HTTP "+res.status+": "+(await res.text()).slice(0,300));
   for(let i=0;i<30;i++){
     await new Promise(ok=>setTimeout(ok,3000));
     const result=await api("/executions?workflowId="+encodeURIComponent(id)+"&limit=5");
