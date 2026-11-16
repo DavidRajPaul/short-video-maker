@@ -1,7 +1,15 @@
 {
-  "name": "Grace In A Minute — Bible Brain Teaser (4 PM IST, DRAFT)",
+  "name": "Grace In A Minute — Bible Brain Teaser 4 PM — PRIVATE RENDER ONLY",
   "nodes": [
     {
+      "id": "quiz-schedule",
+      "name": "Bible Quiz — 4 PM IST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        260
+      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -11,37 +19,85 @@
             }
           ]
         }
-      },
-      "id": "brain-teaser-4pm-trigger",
-      "name": "Bible Teaser — 4 PM IST",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        240,
-        300
-      ]
+      }
     },
     {
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "// Preview-only scaffold. No publishing or external API calls.\n// Before activation, connect validated puzzle generation, persistent dedupe,\n// Scripture checks, Kokoro am_michael rendering, and platform publishing.\nreturn [{ json: { contentType: 'bible-brain-teaser', timezone: 'Asia/Kolkata', scheduledLocalTime: '16:00', narrationVoice: 'am_michael', previewOnly: true, publishEnabled: false, generatedAt: new Date().toISOString() } }];"
-      },
-      "id": "brain-teaser-preview-safety",
-      "name": "Preview Guard — No Publishing",
+      "id": "quiz-build",
+      "name": "Prepare Quiz — NO ANSWER ON VIDEO",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        520,
-        300
-      ]
+        450,
+        260
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// PRIVATE TEST ONLY. Publish nodes intentionally absent.\n// Genesis 6–7: the ark is Noah's, not Moses's.\n// TODO: replace this hardcoded seed with approved scripture-verified\n// puzzle generator + permanent Google Sheets canonical dedupe before activation.\nconst scenes = [\n {text: \"Bible Brain Teaser! Think you know your Bible?\", searchTerms: [\"biblical landscape sunlight\"]},\n {text: \"How many animals did Moses take on the ark?\", searchTerms: [\"ancient ark illustration\"]},\n {text: \"Option A. Lions. Option B. Elephants. Option C. None.\", searchTerms: [\"playful colorful question mark\"]},\n {text: \"Comment A, B, or C. Check the description for the answer!\", searchTerms: [\"cheerful sunset sky\"]}\n];\nconst caption = [\n\"🧠 BIBLE BRAIN TEASER!\",\n\"How many animals did Moses take on the ark?\",\n\"A. Lions 🦁\",\n\"B. Elephants 🐘\",\n\"C. None!\",\n\"\",\n\"💬 Comment A, B, or C before opening the answer!\",\n\"\",\n\"✨ ✨ ✨\",\n\"⬇️ ⬇️ ⬇️\",\n\"\",\n\"✅ ANSWER: C. None! It was Noah, not Moses.\",\n\"📖 Genesis 6–7\",\n\"#BibleQuiz #GraceInAMinute\"\n].join(\"\\n\");\nreturn [{json:{previewOnly:true,autoPublish:false,sourceId:\"seed-moses-noah-ark\",caption,renderRequest:{scenes,config:{voice:\"am_michael\",music:\"funny/quirky\",musicVolume:\"low\",orientation:\"portrait\",captionPosition:\"center\",paddingBack:1500}}}}];"
+      }
+    },
+    {
+      "id": "quiz-http-render",
+      "name": "Create PRIVATE Quiz Video — Railway",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        260
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://short-video-maker-production-4274.up.railway.app/api/short-video",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.renderRequest) }}",
+        "options": {
+          "timeout": 180000
+        }
+      }
+    },
+    {
+      "id": "quiz-inspect",
+      "name": "Store PRIVATE Render ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        950,
+        260
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const response=$input.first().json;\nconst id=response.videoId;\nif(!id||typeof id!==\"string\") throw new Error(\"Private quiz render did not return videoId\");\nreturn [{json:{videoId:id,statusUrl:\"https://short-video-maker-production-4274.up.railway.app/api/short-video/\"+encodeURIComponent(id)+\"/status\",videoUrl:\"https://short-video-maker-production-4274.up.railway.app/api/short-video/\"+encodeURIComponent(id),previewOnly:true,autoPublish:false}}];"
+      }
     }
   ],
   "connections": {
-    "Bible Teaser — 4 PM IST": {
+    "Bible Quiz — 4 PM IST": {
       "main": [
         [
           {
-            "node": "Preview Guard — No Publishing",
+            "node": "Prepare Quiz — NO ANSWER ON VIDEO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Quiz — NO ANSWER ON VIDEO": {
+      "main": [
+        [
+          {
+            "node": "Create PRIVATE Quiz Video — Railway",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create PRIVATE Quiz Video — Railway": {
+      "main": [
+        [
+          {
+            "node": "Store PRIVATE Render ID",
             "type": "main",
             "index": 0
           }
