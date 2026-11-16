@@ -53,3 +53,19 @@ Rendering rules for future Remotion implementation:
 - Verify extreme-length questions and four/five-line variants before merging render integration.
 
 Note: V2 is currently a local preview render, not a connected Railway production render. The draft PR remains unmerged and has no n8n workflow changes.
+
+## Narration quality gate (review feedback)
+
+V1/V2 local previews used a robotic placeholder speech synthesizer. That voice is REJECTED for release; do not reuse it or describe it as production quality.
+
+For the next production-quality preview:
+- Generate narration through the existing deployed Kokoro pipeline, NOT the local placeholder TTS.
+- Use a bright, warm, conversational quiz-host delivery, with natural rise and fall rather than reading headings mechanically.
+- Narrate the trick question as a single thought, with a short pause after "Moses"; do not audibly emphasize the correct answer.
+- Pace slightly faster for the hook, slower and clear for the question and options, then excited but not shouty for the comment CTA.
+- Narration text must exclude emojis, markdown punctuation, scene headings, markup, and Scripture answer.
+- Split phrases into separately timed clips, adding ~200–400 ms pauses, rather than synthesizing entire card text as one flat utterance.
+- Align scene duration to actual speech length; never speed-compress narration just to reach exactly 18 seconds.
+- Mix background music well below the speech; duck music while speaking; avoid competing sound effects.
+- Before publishing, listen to the actual MP4 narration; reject clips with robotic intonation, incorrect emphasis, cut-off words, or poor pronunciation.
+- Do not generate another claimed "voice-fixed" preview until it has actually been synthesized and listened to using the approved production pipeline.
