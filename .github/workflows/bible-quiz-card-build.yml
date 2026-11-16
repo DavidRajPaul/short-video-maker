@@ -1,0 +1,27 @@
+name: Bible Quiz Persistent Card Build
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tools/bible-brain-teaser/**'
+      - '.github/workflows/bible-quiz-card-build.yml'
+permissions:
+  contents: read
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Type-check renderer
+        run: pnpm exec tsc --noEmit --project tsconfig.build.json
+      - name: Validate Bible quiz card contract
+        run: node --test tools/bible-brain-teaser/*.test.mjs

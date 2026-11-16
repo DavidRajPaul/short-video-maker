@@ -172,6 +172,21 @@ export class ShortCreator {
 
       await this.ffmpeg.saveNormalizedAudio(audioStream, tempWavPath);
       await this.ffmpeg.saveToMp3(audioStream, tempMp3Path);
+      // Quiz backgrounds and fixed option cards are drawn directly by Remotion.
+      // Avoid fetching stock clips that will never be displayed in this mode.
+      if (config.quizCard) {
+        scenes.push({
+          captions: [],
+          video: "",
+          audio: {
+            url: `http://localhost:${this.config.port}/api/tmp/${tempMp3FileName}`,
+            duration: audioLength,
+          },
+        });
+        totalDuration += audioLength;
+        index++;
+        continue;
+      }
       let accepted = false;
       let selectedId = "";
       const strictChristianVisuals = config.strictChristianVisuals ?? true;
@@ -268,6 +283,7 @@ export class ShortCreator {
           },
           durationMs: totalDuration * 1000,
           paddingBack: config.paddingBack,
+          quizCard: config.quizCard,
           ...{
             captionBackgroundColor: config.captionBackgroundColor,
             captionPosition: config.captionPosition,

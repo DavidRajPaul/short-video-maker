@@ -1,3 +1,4 @@
+import { BibleQuizVideo } from "./BibleQuizVideo";
 import { GraceCover } from "./GraceCover";
 import { ClosingBeat } from "./ClosingBeat";
 import { Watermark } from "./Watermark";
@@ -28,6 +29,12 @@ export const PortraitVideo: React.FC<z.infer<typeof shortVideoSchema>> = ({
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
+
+  // Bible Brain Teaser has its own persistent-card presentation and animated
+  // background. All other video slots keep the existing caption renderer.
+  if (config.quizCard) {
+    return <BibleQuizVideo scenes={scenes} music={music} config={config} />;
+  }
 
   const captionBackgroundColor = config.captionBackgroundColor ?? "blue";
 
