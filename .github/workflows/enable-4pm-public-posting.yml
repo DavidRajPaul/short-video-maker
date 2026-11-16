@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 5
     env:
       N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
-      APPLY_SCHEDULE: 'false'
+      APPLY_SCHEDULE: 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
