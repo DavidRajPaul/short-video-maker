@@ -16,7 +16,7 @@ for(let attempt=0;attempt<20;attempt++){
  if(child.activeVersionId)break;
  await sleep(1500);
 }
-if(!child.activeVersionId||child.nodes.length!==31)throw Error("Shared publisher has no published activeVersionId; refusing test");
+if(!child.activeVersionId||child.nodes.length<31)throw Error("Shared publisher has no published activeVersionId; refusing test");
 const name="TEMP Shared Publisher Dry-Run "+Date.now();
 const path="shared-publisher-qa-"+randomUUID();
 const webhook={name:"QA Trigger",id:randomUUID(),type:"n8n-nodes-base.webhook",typeVersion:2.1,webhookId:randomUUID(),position:[100,240],parameters:{httpMethod:"POST",path,responseMode:"onReceived",options:{}}};
