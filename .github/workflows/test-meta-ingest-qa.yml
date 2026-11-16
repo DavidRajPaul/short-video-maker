@@ -1,0 +1,22 @@
+name: Test existing Facebook hosted upload and Instagram container without publishing
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/test-meta-ingest-qa.yml'
+permissions:
+  contents: read
+jobs:
+  meta-ingest-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check integration script
+        run: node --check tools/bible-brain-teaser/test-meta-ingest-qa.mjs
+      - name: Use original 3-slot Meta credentials in temporary, nonpublishing media ingestion test
+        run: node tools/bible-brain-teaser/test-meta-ingest-qa.mjs
