@@ -1,0 +1,47 @@
+name: Inspect First Bible Quiz MP4
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/bible-preview-metadata.yml'
+permissions:
+  contents: read
+jobs:
+  inspect-quiz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Install FFmpeg tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Download already-rendered PRIVATE MP4 (no new render, no publishing)
+        run: |
+          curl -fsSL --retry 2 --max-time 120 "https://short-video-maker-production-4274.up.railway.app/api/short-video/cmwj0ibcz000001qv01hcd4vk" -o /tmp/quiz-preview.mp4
+          test $(stat -c%s /tmp/quiz-preview.mp4) -gt 100000
+      - name: Inspect media metadata
+        run: |
+          ffprobe -v error -show_entries format=duration,size:stream=codec_name,codec_type,width,height -of json /tmp/quiz-preview.mp4 > /tmp/quiz-metadata.json
+          python3 - <<'PY'
+          import json
+          obj=json.load(open('/tmp/quiz-metadata.json'))
+          streams=obj.get('streams',[])
+          v=next((s for s in streams if s.get('codec_type')=='video'),None)
+          a=next((s for s in streams if s.get('codec_type')=='audio'),None)
+          duration=float(obj['format']['duration'])
+          print(json.dumps({'duration_sec':duration,'video':v,'audio':a},indent=2))
+          assert v and v['height']>v['width'],'Expected portrait video'
+          assert a,'Missing audio stream'
+          assert 10<=duration<=45,'Unexpected quiz duration'
+          PY
+      - name: Capture still frames for visual QA
+        run: |
+          ffmpeg -y -v error -ss 2 -i /tmp/quiz-preview.mp4 -frames:v 1 /tmp/frame-02.png
+          ffmpeg -y -v error -ss 6 -i /tmp/quiz-preview.mp4 -frames:v 1 /tmp/frame-06.png
+          ffmpeg -y -v error -ss 10 -i /tmp/quiz-preview.mp4 -frames:v 1 /tmp/frame-10.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bible-quiz-private-qa-frames
+          path: |
+            /tmp/quiz-metadata.json
+            /tmp/frame-02.png
+            /tmp/frame-06.png
+            /tmp/frame-10.png
+          retention-days: 3
