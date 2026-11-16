@@ -1,14 +1,14 @@
 {
-  "name": "Grace In A Minute — Bible Brain Teaser 4 PM — PRIVATE RENDER ONLY",
+  "name": "Grace In A Minute — Bible Brain Teaser 4PM — History Guarded Private Render",
   "nodes": [
     {
-      "id": "quiz-schedule",
+      "id": "bible-schedule",
       "name": "Bible Quiz — 4 PM IST",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
         200,
-        260
+        240
       ],
       "parameters": {
         "rule": {
@@ -22,51 +22,118 @@
       }
     },
     {
-      "id": "quiz-build",
-      "name": "Prepare Quiz — NO ANSWER ON VIDEO",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "id": "bible-history-read",
+      "name": "Read Bible Puzzle History",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
       "position": [
         450,
-        260
+        240
       ],
+      "alwaysOutputData": true,
       "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "// PRIVATE TEST ONLY. Publish nodes intentionally absent.\n// Genesis 6–7: the ark is Noah's, not Moses's.\n// TODO: replace this hardcoded seed with approved scripture-verified\n// puzzle generator + permanent Google Sheets canonical dedupe before activation.\nconst scenes = [\n {text: \"Bible Brain Teaser! Think you know your Bible?\", searchTerms: [\"biblical landscape sunlight\"]},\n {text: \"How many animals did Moses take on the ark?\", searchTerms: [\"ancient ark illustration\"]},\n {text: \"Option A. Lions. Option B. Elephants. Option C. None.\", searchTerms: [\"playful colorful question mark\"]},\n {text: \"Comment A, B, or C. Check the description for the answer!\", searchTerms: [\"cheerful sunset sky\"]}\n];\nconst caption = [\n\"🧠 BIBLE BRAIN TEASER!\",\n\"How many animals did Moses take on the ark?\",\n\"A. Lions 🦁\",\n\"B. Elephants 🐘\",\n\"C. None!\",\n\"\",\n\"💬 Comment A, B, or C before opening the answer!\",\n\"\",\n\"✨ ✨ ✨\",\n\"⬇️ ⬇️ ⬇️\",\n\"\",\n\"✅ ANSWER: C. None! It was Noah, not Moses.\",\n\"📖 Genesis 6–7\",\n\"#BibleQuiz #GraceInAMinute\"\n].join(\"\\n\");\nreturn [{json:{previewOnly:true,autoPublish:false,sourceId:\"seed-moses-noah-ark\",caption,renderRequest:{scenes,config:{voice:\"am_michael\",music:\"funny/quirky\",musicVolume:\"low\",orientation:\"portrait\",captionPosition:\"center\",paddingBack:1500}}}}];"
+        "documentId": {
+          "__rl": true,
+          "value": "1GEw7bdgmqC9bb6lfAdJV9ILkRa23qSbW_-6nn6XHqSk",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Bible_Puzzle_History",
+          "mode": "name"
+        },
+        "options": {}
       }
     },
     {
-      "id": "quiz-http-render",
+      "id": "bible-select",
+      "name": "Choose Unused Verified Puzzle",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        240
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Fail closed: read permanent puzzle history before generating anything.\nconst BANK=[[\"ark-moses-trick\",\"trick\",\"moses-noah-ark\",\"noah-ark-builder\",\"How many animals did Moses take on the ark?\",[\"Lions\",\"Elephants\",\"None\"],\"C\",\"None! It was Noah, not Moses.\",\"Genesis 6–7\"],[\"zacchaeus-tree\",\"who-am-i\",\"zacchaeus-sycamore\",\"zacchaeus-climbed-tree\",\"Who climbed a sycamore tree to see Jesus?\",[\"Zacchaeus\",\"Nicodemus\",\"Bartimaeus\"],\"A\",\"Zacchaeus climbed the tree.\",\"Luke 19:4\"],[\"david-five-stones\",\"numbers\",\"david-brook-stones\",\"david-collected-five-smooth-stones\",\"How many smooth stones did David choose from the brook?\",[\"Three\",\"Five\",\"Seven\"],\"B\",\"David chose five smooth stones.\",\"1 Samuel 17:40\"],[\"jonah-great-fish\",\"who-am-i\",\"jonah-swallowed\",\"jonah-great-fish-three-days\",\"Who spent three days and nights inside a great fish?\",[\"Elijah\",\"Jonah\",\"Daniel\"],\"B\",\"Jonah was swallowed by a great fish.\",\"Jonah 1:17\"],[\"joseph-pharaoh-dream\",\"who-am-i\",\"joseph-interprets-dreams\",\"joseph-interpreted-pharaoh-dream\",\"Who interpreted Pharaoh's dreams in Egypt?\",[\"Moses\",\"Aaron\",\"Joseph\"],\"C\",\"Joseph interpreted Pharaoh's dreams, giving God the credit.\",\"Genesis 41:15–16\"],[\"bethlehem-birth\",\"this-or-that\",\"jesus-birthplace\",\"jesus-born-bethlehem\",\"Where was Jesus born?\",[\"Nazareth\",\"Bethlehem\",\"Jerusalem\"],\"B\",\"Jesus was born in Bethlehem.\",\"Matthew 2:1\"],[\"jordan-baptism\",\"numbers\",\"baptism-river\",\"jesus-baptized-jordan-river\",\"In which river did John baptize Jesus?\",[\"Jordan\",\"Nile\",\"Euphrates\"],\"A\",\"Jesus came to John at the Jordan River.\",\"Matthew 3:13\"],[\"peter-water-walking\",\"who-am-i\",\"peter-walked-on-water\",\"peter-walks-to-jesus-on-water\",\"Which disciple walked toward Jesus on the water?\",[\"Andrew\",\"John\",\"Peter\"],\"C\",\"Peter stepped out of the boat and walked on the water toward Jesus.\",\"Matthew 14:29\"]];\nconst normalize=s=>String(s??\"\").normalize(\"NFKC\").toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu,\" \").trim().replace(/\\s+/g,\" \");\nconst history=$input.all().map(x=>x.json??{}).filter(x=>Object.keys(x).length>0);\nfunction exists(p) {return history.some(row=>String(row.puzzle_id??\"\")===p[0]||String(row.canonical_concept??\"\")===p[2]||String(row.answer_fact_id??\"\")===p[3]||normalize(row.question_normalized??row.question)===normalize(p[4]));}\nconst p=BANK.find(item=>!exists(item));\nif(!p) throw new Error(\"Bible quiz bank exhausted: all approved concepts previously used. Refusing to repeat.\");\nconst [id,format,concept,fact,question,options,letter,answer,ref]=p;\nconst labels=options.map((s,i)=>String.fromCharCode(65+i)+\". \"+s);\nconst speakOptions=options.map((s,i)=>\"Option \"+String.fromCharCode(65+i)+\". \"+s+\".\").join(\" \");\nconst caption=[\"🧠 BIBLE BRAIN TEASER!\",\"\",question,...labels,\"\",\"💬 Comment A, B, or C first!\",\"👇 Then tap more for the answer.\",\"\",\"✨ ✨ ✨\",\"⬇️ ⬇️ ⬇️\",\"\",\"✅ ANSWER: \"+letter+\". \"+answer,\"📖 \"+ref,\"\",\"#BibleQuiz #GraceInAMinute\"].join(\"\\n\");\nconst scenes=[\n{text:\"Bible Brain Teaser! Think you know your Bible?\",searchTerms:[\"bible sunrise colorful landscape\"]},\n{text:question,searchTerms:[\"ancient biblical colorful illustration\"]},\n{text:speakOptions,searchTerms:[\"playful colorful bible quiz abstract background\"]},\n{text:\"Comment A, B, or C. Check the description for the answer!\",searchTerms:[\"cheerful blue sky sunbeams\"]}\n];\nreturn [{json:{puzzleId:id,format,concept,fact,question,caption,answer,scriptureReference:ref,previewOnly:true,autoPublish:false,\nledger:{puzzle_id:id,canonical_concept:concept,answer_fact_id:fact,question_normalized:normalize(question),question_fingerprint:normalize(question),question,answer,scripture_reference:ref,status:\"reserved-private-render\",created_at_utc:new Date().toISOString(),published_at_utc:\"\",platform_urls:\"\"},\nrenderRequest:{scenes,config:{voice:\"am_michael\",music:\"funny/quirky\",musicVolume:\"low\",orientation:\"portrait\",captionPosition:\"center\",paddingBack:1500}}}}];"
+      }
+    },
+    {
+      "id": "bible-reserve",
+      "name": "Reserve Puzzle in History",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        950,
+        240
+      ],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1GEw7bdgmqC9bb6lfAdJV9ILkRa23qSbW_-6nn6XHqSk",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Bible_Puzzle_History",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "puzzle_id": "={{ $json.ledger.puzzle_id }}",
+            "canonical_concept": "={{ $json.ledger.canonical_concept }}",
+            "answer_fact_id": "={{ $json.ledger.answer_fact_id }}",
+            "question_normalized": "={{ $json.ledger.question_normalized }}",
+            "question_fingerprint": "={{ $json.ledger.question_fingerprint }}",
+            "question": "={{ $json.ledger.question }}",
+            "answer": "={{ $json.ledger.answer }}",
+            "scripture_reference": "={{ $json.ledger.scripture_reference }}",
+            "status": "={{ $json.ledger.status }}",
+            "created_at_utc": "={{ $json.ledger.created_at_utc }}",
+            "published_at_utc": "={{ $json.ledger.published_at_utc }}",
+            "platform_urls": "={{ $json.ledger.platform_urls }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "bible-create",
       "name": "Create PRIVATE Quiz Video — Railway",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        700,
-        260
+        1200,
+        240
       ],
       "parameters": {
         "method": "POST",
         "url": "https://short-video-maker-production-4274.up.railway.app/api/short-video",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.renderRequest) }}",
+        "jsonBody": "={{ JSON.stringify($('Choose Unused Verified Puzzle').first().json.renderRequest) }}",
         "options": {
           "timeout": 180000
         }
       }
     },
     {
-      "id": "quiz-inspect",
+      "id": "bible-id",
       "name": "Store PRIVATE Render ID",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        950,
-        260
+        1450,
+        240
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const response=$input.first().json;\nconst id=response.videoId;\nif(!id||typeof id!==\"string\") throw new Error(\"Private quiz render did not return videoId\");\nreturn [{json:{videoId:id,statusUrl:\"https://short-video-maker-production-4274.up.railway.app/api/short-video/\"+encodeURIComponent(id)+\"/status\",videoUrl:\"https://short-video-maker-production-4274.up.railway.app/api/short-video/\"+encodeURIComponent(id),previewOnly:true,autoPublish:false}}];"
+        "jsCode": "const response=$input.first().json;const id=response.videoId;if(!id||typeof id!=='string')throw new Error('Railway private render missing videoId');return [{json:{videoId:id,sourcePuzzleId:$('Choose Unused Verified Puzzle').first().json.puzzleId,statusUrl:'https://short-video-maker-production-4274.up.railway.app/api/short-video/'+encodeURIComponent(id)+'/status',videoUrl:'https://short-video-maker-production-4274.up.railway.app/api/short-video/'+encodeURIComponent(id),previewOnly:true,autoPublish:false}}];"
       }
     }
   ],
@@ -75,14 +142,36 @@
       "main": [
         [
           {
-            "node": "Prepare Quiz — NO ANSWER ON VIDEO",
+            "node": "Read Bible Puzzle History",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Prepare Quiz — NO ANSWER ON VIDEO": {
+    "Read Bible Puzzle History": {
+      "main": [
+        [
+          {
+            "node": "Choose Unused Verified Puzzle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Choose Unused Verified Puzzle": {
+      "main": [
+        [
+          {
+            "node": "Reserve Puzzle in History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reserve Puzzle in History": {
       "main": [
         [
           {
