@@ -84,7 +84,7 @@ link(ready.name,cloud.name);
 const verify=add({name:"Quiz Verify Permanent MP4 URL",type:"n8n-nodes-base.code",typeVersion:2,parameters:{mode:"runOnceForAllItems",jsCode:`
 const upload=$input.first().json;const url=String(upload.url??"");
 if(!/^https:\\/\\//.test(url))throw new Error("ImageKit returned no HTTPS asset URL");
-const host=new URL(url).hostname;
+const host=(url.match(/^https:\\/\\/([^\\/]+)/)||[])[1]||"";
 if(!(host==="ik.imagekit.io"||host.endsWith(".imagekit.io")))throw new Error("Asset URL is not on the expected ImageKit host");
 if(!/\\.mp4(?:\\?|$)/i.test(url))throw new Error("Archived asset is not MP4");
 if(Number(upload.size??0)<100000)throw new Error("ImageKit MP4 upload incomplete");
