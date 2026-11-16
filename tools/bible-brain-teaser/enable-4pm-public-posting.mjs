@@ -13,6 +13,11 @@ const [quiz,shared,original,oldDraft]=await Promise.all([
 if(!quiz.activeVersionId || !shared.activeVersionId || !original.activeVersionId)
  throw Error("All production, quiz and publisher workflows must be published");
 if(oldDraft.activeVersionId)throw Error("Old draft has an active trigger; refusing duplicate schedule");
+if(quiz.nodes.length===29 && quiz.activeVersionId &&
+  ["youtube","facebook","instagram"].every(p=>quiz.nodes.some(n=>n.name==="Publish Quiz to "+p))){
+ console.log("4 PM PUBLIC QUIZ SCHEDULE ALREADY DEPLOYED; no mutation");
+ process.exit(0);
+}
 if(quiz.settings?.timezone!=="Asia/Kolkata"||quiz.nodes.length!==20)
  throw Error("Unexpected quiz 4PM workflow state");
 const schedule=quiz.nodes.filter(n=>n.type==="n8n-nodes-base.scheduleTrigger"&&!n.disabled);
