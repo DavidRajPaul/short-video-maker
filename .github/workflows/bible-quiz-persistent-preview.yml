@@ -1,6 +1,9 @@
 name: Bible Quiz Persistent Card Private Preview
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/bible-quiz-persistent-preview.yml'
   push:
     branches: [main]
     paths:
@@ -27,7 +30,8 @@ jobs:
       - name: Install ffprobe/FFmpeg
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - name: Allow Railway to deploy the merged renderer version
-        run: sleep 180
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then sleep 10; else sleep 180; fi
       - name: Generate one private quiz MP4 and verify media
         id: render
         run: node tools/bible-brain-teaser/test-private-render.mjs
