@@ -1,0 +1,22 @@
+name: Verify 4 PM public quiz schedule wiring
+on:
+  pull_request:
+    paths:
+      - 'tools/bible-brain-teaser/enable-4pm-public-posting.mjs'
+      - '.github/workflows/enable-4pm-public-posting.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+      APPLY_SCHEDULE: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tools/bible-brain-teaser/enable-4pm-public-posting.mjs
+      - run: node tools/bible-brain-teaser/enable-4pm-public-posting.mjs
