@@ -1,0 +1,35 @@
+name: Deliver Bible Quiz MP4 (private, persistent artifact)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/deliver-bible-quiz-mp4.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  render-and-save:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install FFmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Render current private quiz and save MP4 in runner
+        run: node tools/bible-brain-teaser/test-private-render.mjs
+      - name: Generate visual checks (no publishing)
+        run: |
+          mkdir -p /tmp/quiz-review
+          cp /tmp/bible-quiz-private.mp4 /tmp/quiz-review/Bible-Brain-Teaser-Updated.mp4
+          ffmpeg -v error -y -ss 2 -i /tmp/bible-quiz-private.mp4 -frames:v 1 /tmp/quiz-review/intro.png
+          ffmpeg -v error -y -ss 8 -i /tmp/bible-quiz-private.mp4 -frames:v 1 /tmp/quiz-review/question.png
+          ffmpeg -v error -y -sseof -2 -i /tmp/bible-quiz-private.mp4 -frames:v 1 /tmp/quiz-review/end.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Bible-Brain-Teaser-Updated-Video
+          path: /tmp/quiz-review/
+          retention-days: 14
