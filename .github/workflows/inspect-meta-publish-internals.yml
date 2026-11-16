@@ -1,8 +1,6 @@
 name: Inspect original FB and IG publisher internals safely
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/inspect-meta-publish-internals.yml'
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
