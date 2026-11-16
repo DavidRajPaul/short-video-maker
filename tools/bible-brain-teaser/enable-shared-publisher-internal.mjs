@@ -16,7 +16,7 @@ if(meta.length<20||meta.some(n=>n.disabled!==true))throw Error("Meta nodes not f
 const connected=new Set(Object.values(wf.connections??{}).flatMap(x=>(x.main??[]).flat().filter(Boolean).map(n=>n.node)));
 if(meta.some(n=>connected.has(n.name)))throw Error("A Meta publisher node is reachable");
 if(!nodes.find(n=>n.name==="Normalize Publishing Input")?.parameters?.jsCode.includes('["validateOnly","privateYouTubeQA"]'))throw Error("No fail-closed publishing mode guard");
-if(!wf.active)await req("/workflows/"+id+"/activate","POST");
+if(!wf.activeVersionId)await req("/workflows/"+id+"/publish","POST");
 const saved=await req("/workflows/"+id);
-if(!saved.active)throw Error("Shared publisher activation not persisted");
-console.log(JSON.stringify({id,active:true,trigger:"internal Execute Workflow only",schedules:0,webhooks:0,metaDisabled:true,youtubePrivacy:"private",publicPostingEnabled:false,original3SlotsUntouched:true},null,2));
+if(!saved.activeVersionId)throw Error("Shared publisher is not published (activeVersionId missing)");
+console.log(JSON.stringify({id,active:true,publishedVersion:true,trigger:"internal Execute Workflow only",schedules:0,webhooks:0,metaDisabled:true,youtubePrivacy:"private",publicPostingEnabled:false,original3SlotsUntouched:true},null,2));
