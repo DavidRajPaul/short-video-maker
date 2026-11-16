@@ -15,7 +15,6 @@ on:
 
 permissions:
   contents: read
-  issues: write
   statuses: write
 
 jobs:
@@ -42,37 +41,6 @@ jobs:
         env:
           APPLY: 'true'
         run: node tools/bible-brain-teaser/sync-n8n-private.mjs
-      - name: Publish sanitized workflow result to PR 18
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-          API_KEY_SET: ${{ secrets.N8N_API_KEY != '' }}
-          JOB_STATUS: ${{ job.status }}
-          PREFLIGHT_STATUS: ${{ steps.preflight.outcome }}
-          APPLY_STATUS: ${{ steps.apply.outcome }}
-        run: |
-          node --input-type=module <<'JS'
-          const body = [
-            'Bible Quiz n8n safe-sync GitHub Actions',
-            'Run: ' + process.env.GITHUB_RUN_ID,
-            'Result: ' + process.env.JOB_STATUS,
-            'API secret configured: ' + process.env.API_KEY_SET,
-            'Read-only preflight: ' + process.env.PREFLIGHT_STATUS,
-            'Apply to unpublished six-node draft: ' + process.env.APPLY_STATUS,
-            'Original FINAL 3 Slots was not targeted; no publishing was requested.'
-          ].join('\n');
-          const response = await fetch('https://api.github.com/repos/' + process.env.GITHUB_REPOSITORY + '/issues/18/comments', {
-            method:'POST',
-            headers: {
-              authorization: 'Bearer ' + process.env.GH_TOKEN,
-              accept:'application/vnd.github+json',
-              'content-type':'application/json',
-              'x-github-api-version':'2022-11-28'
-            },
-            body:JSON.stringify({body})
-          });
-          if (!response.ok) throw new Error('Could not post CI status: ' + response.status);
-          JS
       - name: Emit GitHub commit status for verification
         if: always()
         env:
