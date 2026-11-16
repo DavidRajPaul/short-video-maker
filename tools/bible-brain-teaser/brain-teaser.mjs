@@ -11,6 +11,21 @@ export function normalize(value) {
   return String(value ?? "").normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim().replace(/\s+/g, " ");
 }
 
+
+// TTS receives spoken words only. Keep emojis, decorations, hashtags and formatting in on-screen text.
+export function toSpokenText(value) {
+  return String(value ?? "")
+    .replace(/https?:\/\/\S+/giu, " ")
+    .replace(/#[\p{L}\p{N}_]+/gu, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/[\p{Extended_Pictographic}\uFE0E\uFE0F\u200D\u20E3]/gu, " ")
+    .replace(/[*_~\u0060|^#@%+=<>[\]{}\\/]/g, " ")
+    .replace(/&/g, " and ")
+    .replace(/[^\p{L}\p{N}\s.,!?;:'()\-–]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function fingerprint(value) {
   return createHash("sha256").update(normalize(value)).digest("hex");
 }
@@ -113,8 +128,8 @@ export function buildRenderPlan(puzzle) {
     },
     scenes: [
       { start: 0, end: 3, title: "BIBLE BRAIN TEASER!", narration: "Think you know your Bible?" },
-      { start: 3, end: 8, title: "TRICK QUESTION!", text: puzzle.question, narration: puzzle.question },
-      { start: 8, end: 13, title: "CHOOSE YOUR ANSWER", text: options.join("\n"), narration: options.join(". ") },
+      { start: 3, end: 8, title: "TRICK QUESTION!", text: puzzle.question, narration: toSpokenText(puzzle.question) },
+      { start: 8, end: 13, title: "CHOOSE YOUR ANSWER", text: options.join("\n"), narration: options.map((option, i) => `Option ${String.fromCharCode(65 + i)}. ${toSpokenText(option)}.`).join(" ") },
       { start: 13, end: 18, title: "YOUR TURN!", text: "Comment your answer!\nThen check the description.", narration: "Comment your answer. Then check the description!" }
     ],
     description: buildDescription(puzzle),
