@@ -34,23 +34,23 @@ const start={
  type:"n8n-nodes-base.executeWorkflowTrigger",typeVersion:1.1,
  position:[200,100],parameters:{inputSource:"passthrough"}
 };
-const normalize=code("Normalize Publishing Input",String.raw\`
+const normalize=code("Normalize Publishing Input",String.raw`
 const raw=$input.first()?.json??{};
 const data=raw.publisherInput??raw;
 const url=String(data.videoUrl??data.publicMp4Url??"").trim();
-if(!/^https:\\/\\/ik\\.imagekit\\.io\\/[^\\s?#]+\\.mp4(?:[?#].*)?$/i.test(url))throw new Error("Expected a permanent HTTPS ImageKit MP4");
+if(!/^https:\/\/ik\.imagekit\.io\/[^\s?#]+\.mp4(?:[?#].*)?$/i.test(url))throw new Error("Expected a permanent HTTPS ImageKit MP4");
 const contentId=String(data.contentId??data.puzzleId??"").trim();
 if(!/^[a-z0-9][a-z0-9-_]{2,110}$/i.test(contentId))throw new Error("Missing valid stable content ID");
 const title=String(data.title??"").trim();
 const description=String(data.description??data.caption??"").trim();
 if(title.length<8||title.length>100)throw new Error("Publisher title must be 8-100 characters");
 if(description.length<20||description.length>5000)throw new Error("Publisher description must be 20-5000 characters");
-if(data.contentType==="bible_quiz" && (!/ANSWER:/i.test(description)||!/\\b(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Matthew|Mark|Luke|John|Samuel|Judges|Jonah|Acts|Psalms|Proverbs|Romans|Kings|Revelation)\\b/i.test(description)))throw new Error("Bible quiz description missing verified answer or reference");
+if(data.contentType==="bible_quiz" && (!/ANSWER:/i.test(description)||!/\b(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Matthew|Mark|Luke|John|Samuel|Judges|Jonah|Acts|Psalms|Proverbs|Romans|Kings|Revelation)\b/i.test(description)))throw new Error("Bible quiz description missing verified answer or reference");
 const mode=String(data.mode??"validateOnly");
 if(!["validateOnly","privateYouTubeQA"].includes(mode))throw new Error("Public posting is intentionally disabled until Meta and YouTube tests pass");
 const tags=Array.isArray(data.tags)?data.tags.map(x=>String(x).replace(/^#/,"")).filter(Boolean).slice(0,18):["BibleQuiz","GraceInAMinute"];
 return [{json:{contentId,contentType:String(data.contentType??"generic"),videoUrl:url,title,description,tags,tagsCsv:tags.join(","),mode,answerVisibleInVideo:false}}];
-\`,[450,100]);
+`,[450,100]);
 const settings=take("PUBLISHER SETTINGS - EDIT CLOUDINARY HERE");
 settings.position=[700,100]; // Existing account config remains inside n8n, not in git.
 const gate={
@@ -59,9 +59,9 @@ const gate={
  parameters:{conditions:{options:{caseSensitive:true,leftValue:"",typeValidation:"strict",version:2},combinator:"and",
  conditions:[{id:randomUUID(),leftValue:"={{ $('Normalize Publishing Input').first().json.mode }}",rightValue:"privateYouTubeQA",operator:{type:"string",operation:"equals"}}]},options:{}}
 };
-const validated=code("Validated without publishing",String.raw\`
+const validated=code("Validated without publishing",String.raw`
 return [{json:{contentId:$('Normalize Publishing Input').first().json.contentId,status:"validated_only",publicPublishingEnabled:false}}];
-\`,[1170,300]);
+`,[1170,300]);
 const download=take("Download MP4");
 download.position=[1190,70];
 download.parameters.url="={{ $('Normalize Publishing Input').first().json.videoUrl }}";
@@ -76,12 +76,12 @@ yt.parameters.options={
  tags:"={{ $('Normalize Publishing Input').first().json.tagsCsv }}",
  privacyStatus:"private"
 };
-const ytResult=code("Capture PRIVATE YouTube Result",String.raw\`
+const ytResult=code("Capture PRIVATE YouTube Result",String.raw`
 const data=$input.first().json;
 const id=String(data.id??data.uploadId??data.videoId??"");
 if(!/^[A-Za-z0-9_-]{6,32}$/.test(id))throw new Error("YouTube upload did not return a valid video ID");
 return [{json:{contentId:$('Normalize Publishing Input').first().json.contentId,platform:"youtube",privacy:"private",videoId:id,url:"https://www.youtube.com/watch?v="+id,status:"uploaded_private",publicPublishingEnabled:false}}];
-\`,[1670,70]);
+`,[1670,70]);
 
 const nodes=[start,normalize,settings,gate,validated,download,yt,ytResult];
 const edges={};
