@@ -23,7 +23,7 @@ try{
  if(stage.active||stage.nodes.length!==17)throw Error("Staging workflow unexpected active/node count");
  const googleNodes=stage.nodes.filter(n=>n.type==="n8n-nodes-base.googleSheets");
  if(googleNodes.length!==2||googleNodes.some(n=>!n.credentials?.googleSheetsOAuth2Api?.id))throw Error("Staging Google Sheets credential references are incomplete");
- console.log("Two Google Sheets credentials verified on inactive staging workflow");
+ console.log("Two Google Sheets credentials verified on inactive staging workflow (sandbox URL validation fix applied)");
  const unused=["Quiz YouTube Upload - DISCONNECTED","Quiz IG Create Reel - DISCONNECTED","Quiz FB Start Reel - DISCONNECTED"];
  const main=stage.nodes.filter(n=>!unused.includes(n.name)&&n.type!=="n8n-nodes-base.scheduleTrigger");
  const path="bible-quiz-preview-"+randomUUID();
