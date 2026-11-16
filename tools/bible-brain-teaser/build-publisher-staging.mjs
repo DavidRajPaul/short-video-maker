@@ -68,6 +68,12 @@ link(pending.name,wait.name);
 // Upload to public, persistent Cloudinary HTTPS MP4, using existing Cloudinary BASIC credential.
 const cloud=clone("Upload Scenic Background to Cloudinary","Quiz Archive MP4 to Cloudinary");
 const originalUrl=cloud.parameters?.url;
+if(typeof originalUrl==="string"&&originalUrl.startsWith("=https://")){
+  try{
+    const u=new URL(originalUrl.slice(1));
+    console.log("SANITIZED CLOUDINARY SOURCE",JSON.stringify({hostname:u.hostname,pathSegments:u.pathname.split("/").filter(Boolean).map(v=>v==="image"||v==="video"||v==="upload"?v:"[segment]"),queryNames:[...u.searchParams.keys()]}));
+  }catch{}
+}
 if(typeof originalUrl!=="string"||!originalUrl.includes("/image/upload"))throw Error("Cloudinary URL pattern unexpected: "+JSON.stringify({type:typeof originalUrl,length:String(originalUrl).length,hasCloudinary:String(originalUrl).includes("cloudinary"),hasImage:String(originalUrl).includes("image"),hasUpload:String(originalUrl).includes("upload"),hasVideo:String(originalUrl).includes("video"),firstToken:String(originalUrl).slice(0,2)}));
 cloud.parameters.url=originalUrl.replace("/image/upload","/video/upload");
 cloud.parameters.bodyParameters={parameters:[
