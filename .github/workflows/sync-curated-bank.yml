@@ -1,0 +1,22 @@
+name: Sync curated Bible quizzes to active 4PM workflow
+on:
+  pull_request:
+    paths:
+      - 'tools/bible-brain-teaser/sync-curated-bank.mjs'
+      - '.github/workflows/sync-curated-bank.yml'
+permissions:
+  contents: read
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+      APPLY_BANK: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tools/bible-brain-teaser/*.test.mjs
+      - run: node tools/bible-brain-teaser/sync-curated-bank.mjs
