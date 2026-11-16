@@ -1,0 +1,37 @@
+name: Bible Brain Teaser checks
+
+on:
+  pull_request:
+    paths:
+      - 'tools/bible-brain-teaser/**'
+      - '.github/workflows/bible-brain-teaser.yml'
+  push:
+    paths:
+      - 'tools/bible-brain-teaser/**'
+      - '.github/workflows/bible-brain-teaser.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  teaser-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run teaser tests
+        run: node --test tools/bible-brain-teaser/brain-teaser.test.mjs
+      - name: Validate draft n8n JSON
+        run: |
+          node --input-type=module -e "
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const w = JSON.parse(fs.readFileSync('tools/bible-brain-teaser/n8n-bible-teaser-4pm-draft.json','utf8'));
+          assert.equal(w.active,false);
+          assert.equal(w.settings.timezone,'Asia/Kolkata');
+          assert.equal(w.nodes[0].parameters.rule.interval[0].expression,'0 16 * * *');
+          assert.equal(w.nodes.some(n => /facebook|youtube|instagram/i.test(n.name)),false);
+          "
