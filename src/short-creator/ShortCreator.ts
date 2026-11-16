@@ -283,6 +283,7 @@ export class ShortCreator {
           },
           durationMs: totalDuration * 1000,
           paddingBack: config.paddingBack,
+          quizCard: config.quizCard,
           ...{
             captionBackgroundColor: config.captionBackgroundColor,
             captionPosition: config.captionPosition,
