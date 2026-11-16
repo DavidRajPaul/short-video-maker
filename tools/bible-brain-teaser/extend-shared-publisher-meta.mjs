@@ -6,7 +6,7 @@ const request=async(path,method="GET",body)=>{
  const t=await res.text();if(!res.ok)throw Error(method+" "+path+" HTTP "+res.status+" "+t.slice(0,250));return t?JSON.parse(t):{};
 };
 const old=await request("/workflows/"+ID);
-if(!old.activeVersionId || old.nodes.length!==31)throw Error("Shared publisher not in expected internally published state");
+if(!old.activeVersionId || (old.nodes.length<31||old.nodes.length>36))throw Error("Shared publisher not in expected internally published state");
 const nodes=structuredClone(old.nodes), connections=structuredClone(old.connections);
 const node=name=>{const n=nodes.find(n=>n.name===name);if(!n)throw Error("Missing "+name);return n;};
 const guard=node("Normalize Publishing Input");
