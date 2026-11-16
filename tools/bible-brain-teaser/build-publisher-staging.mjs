@@ -65,33 +65,30 @@ link(check.name,ready.name);
 link(ready.name,pending.name,1);
 link(pending.name,wait.name);
 
-// Upload to public, persistent Cloudinary HTTPS MP4, using existing Cloudinary BASIC credential.
-const cloud=clone("Upload Scenic Background to Cloudinary","Quiz Archive MP4 to Cloudinary");
+// Upload to public, persistent ImageKit HTTPS MP4, using existing ImageKit BASIC credential.
+const cloud=clone("Upload Scenic Background to Cloudinary","Quiz Archive MP4 to ImageKit");
 const originalUrl=cloud.parameters?.url;
-if(typeof originalUrl==="string"&&originalUrl.startsWith("=https://")){
-  try{
-    const u=new URL(originalUrl.slice(1));
-    console.log("SANITIZED CLOUDINARY SOURCE",JSON.stringify({hostname:u.hostname,pathSegments:u.pathname.split("/").filter(Boolean).map(v=>v==="image"||v==="video"||v==="upload"?v:"[segment]"),queryNames:[...u.searchParams.keys()]}));
-  }catch{}
-}
-if(typeof originalUrl!=="string"||!originalUrl.includes("/image/upload"))throw Error("Cloudinary URL pattern unexpected: "+JSON.stringify({type:typeof originalUrl,length:String(originalUrl).length,hasCloudinary:String(originalUrl).includes("cloudinary"),hasImage:String(originalUrl).includes("image"),hasUpload:String(originalUrl).includes("upload"),hasVideo:String(originalUrl).includes("video"),firstToken:String(originalUrl).slice(0,2)}));
-cloud.parameters.url=originalUrl.replace("/image/upload","/video/upload");
+// The original node is misnamed "Cloudinary"; it actually uses ImageKit's
+// authenticated server-side file-upload endpoint. Keep its URL and credential.
+if(typeof originalUrl!=="string"||!originalUrl.includes("upload.imagekit.io")||!originalUrl.includes("/files/upload"))throw Error("Existing ImageKit upload endpoint not recognized");
 cloud.parameters.bodyParameters={parameters:[
  {parameterType:"formData",name:"file",value:"={{ $('Store PRIVATE Render ID').first().json.videoUrl }}"},
- {parameterType:"formData",name:"public_id",value:"={{ 'grace-bible-quiz-'+$('Choose Unused Verified Puzzle').first().json.puzzleId+'-'+$execution.id }}"}
+ {parameterType:"formData",name:"fileName",value:"={{ 'grace-bible-quiz-'+$('Choose Unused Verified Puzzle').first().json.puzzleId+'-'+$execution.id+'.mp4' }}"}
 ]};
 if(!cloud.credentials?.httpBasicAuth?.id)throw Error("Missing original Cloudinary auth credential");
 nodes.push(cloud);
 link(ready.name,cloud.name);
 const verify=add({name:"Quiz Verify Permanent MP4 URL",type:"n8n-nodes-base.code",typeVersion:2,parameters:{mode:"runOnceForAllItems",jsCode:`
-const upload=$input.first().json;let url=String(upload.secure_url??"");
-if(!/^https:\\/\\/res\\.cloudinary\\.com\\//.test(url))throw new Error("No approved persistent Cloudinary HTTPS MP4 URL");
-if(!/\\.mp4(?:\\?|$)/i.test(url))throw new Error("Cloudinary asset is not MP4");
-if(upload.resource_type!=="video"||Number(upload.bytes??0)<100000)throw new Error("Cloudinary video upload incomplete");
+const upload=$input.first().json;const url=String(upload.url??"");
+if(!/^https:\\/\\//.test(url))throw new Error("ImageKit returned no HTTPS asset URL");
+const host=new URL(url).hostname;
+if(!(host==="ik.imagekit.io"||host.endsWith(".imagekit.io")))throw new Error("Asset URL is not on the expected ImageKit host");
+if(!/\\.mp4(?:\\?|$)/i.test(url))throw new Error("Archived asset is not MP4");
+if(Number(upload.size??0)<100000)throw new Error("ImageKit MP4 upload incomplete");
 return [{json:{puzzleId:$('Choose Unused Verified Puzzle').first().json.puzzleId,publicMp4Url:url,caption:$('Choose Unused Verified Puzzle').first().json.caption,sourceRenderId:$('Store PRIVATE Render ID').first().json.videoId,status:"preview-archived",autoPublish:false}}];
 ` }});
 nodes.push(verify);link(cloud.name,verify.name);
-const lock=add({name:"QUIZ NO PUBLISHING - Manual Platform QA Gate",type:"n8n-nodes-base.code",typeVersion:2,parameters:{mode:"runOnceForAllItems",jsCode:"return $input.all().map(i=>({json:{...i.json,publicPublishingEnabled:false,note:'Preview archived to Cloudinary. All social publishing disabled pending platform tests.'}}));"}});
+const lock=add({name:"QUIZ NO PUBLISHING - Manual Platform QA Gate",type:"n8n-nodes-base.code",typeVersion:2,parameters:{mode:"runOnceForAllItems",jsCode:"return $input.all().map(i=>({json:{...i.json,publicPublishingEnabled:false,note:'Preview archived to ImageKit. All social publishing disabled pending platform tests.'}}));"}});
 nodes.push(lock);link(verify.name,lock.name);
 
 // Stage the real platform credential-bearing nodes but keep all disconnected, hence impossible to publish.
@@ -109,7 +106,7 @@ nodes.push(ig);
 const fb=clone("FB Reel Start Upload","Quiz FB Start Reel - DISCONNECTED");
 nodes.push(fb);
 const workflow={
- name:"Grace In A Minute — Bible Brain Teaser 4PM — STAGING: Cloudinary archive, NO social publishing",
+ name:"Grace In A Minute — Bible Brain Teaser 4PM — STAGING: ImageKit archive, NO social publishing",
  nodes,connections,settings:{timezone:"Asia/Kolkata",executionOrder:"v1"}
 };
 // This workflow is NOT activated. The output connections terminate before all three platform nodes.
@@ -131,4 +128,4 @@ if(matches.length){
 const id=result.id;
 const stored=await request("/workflows/"+id);
 if(stored.active||stored.nodes.length!==nodes.length)throw Error("Staged workflow readback mismatch");
-console.log(JSON.stringify({created:true,workflowId:id,url:"https://meetdavidraj7.n8n-wsk.com/workflow/"+id,active:false,nodeCount:nodes.length,socialConnected:false,sourceOriginalUntouched:true,publicCloudinaryPath:cloud.name,platformStubs:[yt.name,ig.name,fb.name],codeChange:"none"},null,2));
+console.log(JSON.stringify({created:true,workflowId:id,url:"https://meetdavidraj7.n8n-wsk.com/workflow/"+id,active:false,nodeCount:nodes.length,socialConnected:false,sourceOriginalUntouched:true,publicImageKitPath:cloud.name,platformStubs:[yt.name,ig.name,fb.name],codeChange:"none"},null,2));
