@@ -1,0 +1,59 @@
+{
+  "name": "Grace In A Minute — Bible Brain Teaser (4 PM IST, DRAFT)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 16 * * *"
+            }
+          ]
+        }
+      },
+      "id": "brain-teaser-4pm-trigger",
+      "name": "Bible Teaser — 4 PM IST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Preview-only scaffold. No publishing or external API calls.\n// Before activation, connect validated puzzle generation, persistent dedupe,\n// Scripture checks, Kokoro am_michael rendering, and platform publishing.\nreturn [{ json: { contentType: 'bible-brain-teaser', timezone: 'Asia/Kolkata', scheduledLocalTime: '16:00', narrationVoice: 'am_michael', previewOnly: true, publishEnabled: false, generatedAt: new Date().toISOString() } }];"
+      },
+      "id": "brain-teaser-preview-safety",
+      "name": "Preview Guard — No Publishing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Bible Teaser — 4 PM IST": {
+      "main": [
+        [
+          {
+            "node": "Preview Guard — No Publishing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "Asia/Kolkata",
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "pinData": {},
+  "tags": []
+}
