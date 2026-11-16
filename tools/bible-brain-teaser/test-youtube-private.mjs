@@ -48,3 +48,5 @@ try{
   for(let i=0;i<12;i++){try{await request("/workflows/"+id,"DELETE");console.log("Temporary YouTube test workflow removed");break;}catch(e){if(!e.message.includes("HTTP 409"))throw e;await sleep(2000)}}
  }
 }
+
+// Private-only upload: never configure public privacy here.
