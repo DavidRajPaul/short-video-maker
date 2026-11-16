@@ -1,0 +1,19 @@
+name: Bible quiz archive staging contract
+on:
+  pull_request:
+    paths:
+      - 'tools/bible-brain-teaser/build-publisher-staging.mjs'
+      - 'tools/bible-brain-teaser/PUBLISHING_STAGING.md'
+      - '.github/workflows/bible-quiz-archive-contract.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tools/bible-brain-teaser/build-publisher-staging.mjs
+      - run: node --test tools/bible-brain-teaser/*.test.mjs
