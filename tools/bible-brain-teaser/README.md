@@ -69,3 +69,7 @@ For the next production-quality preview:
 - Mix background music well below the speech; duck music while speaking; avoid competing sound effects.
 - Before publishing, listen to the actual MP4 narration; reject clips with robotic intonation, incorrect emphasis, cut-off words, or poor pronunciation.
 - Do not generate another claimed "voice-fixed" preview until it has actually been synthesized and listened to using the approved production pipeline.
+
+## Approved male voice
+
+User selected Kokoro voice ID `am_michael` for Bible Brain Teaser. The scene render plan now explicitly requests that voice at baseline speed 1.0, with phrase pauses, music ducking and narration-length-aware timing. This is metadata for later renderer integration, not proof of generated audio. Do not merge this preview-only PR assuming that Railway or n8n has been updated. Existing daily slots must retain their current narrator.
