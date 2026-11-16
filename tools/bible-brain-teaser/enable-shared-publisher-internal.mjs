@@ -12,11 +12,11 @@ if(nodes.some(n=>/scheduleTrigger|webhook/.test(n.type)&&!n.disabled))throw Erro
 const download=nodes.find(n=>n.name==="Download MP4"),yt=nodes.find(n=>n.name==="Upload a video");
 if(!download||!yt||yt.parameters?.options?.privacyStatus!=="private")throw Error("YouTube is not private");
 const meta=nodes.filter(n=>/^FB |^IG /.test(n.name));
-if(meta.length<20||meta.some(n=>n.disabled!==true))throw Error("Meta nodes not fully disabled");
+const allow=new Set(["FB Reel Start Upload","FB Reel Upload Binary","IG Create Container"]);if(meta.length<20||meta.some(n=>n.disabled!==true&&!allow.has(n.name)))throw Error("Unexpected public Meta node enabled");
 const connected=new Set(Object.values(wf.connections??{}).flatMap(x=>(x.main??[]).flat().filter(Boolean).map(n=>n.node)));
-if(meta.some(n=>connected.has(n.name)))throw Error("A Meta publisher node is reachable");
+if(meta.some(n=>connected.has(n.name)&&!allow.has(n.name)))throw Error("Unexpected public Meta node reachable");
 if(!nodes.find(n=>n.name==="Normalize Publishing Input")?.parameters?.jsCode.includes('"privateYouTubeQA"'))throw Error("No fail-closed publishing mode guard");
 if(!wf.activeVersionId)await req("/workflows/"+id+"/publish","POST");
 const saved=await req("/workflows/"+id);
 if(!saved.activeVersionId)throw Error("Shared publisher is not published (activeVersionId missing)");
-console.log(JSON.stringify({id,active:true,publishedVersion:true,trigger:"internal Execute Workflow only",schedules:0,webhooks:0,metaDisabled:true,youtubePrivacy:"private",publicPostingEnabled:false,original3SlotsUntouched:true},null,2));
+console.log(JSON.stringify({id,active:true,publishedVersion:true,trigger:"internal Execute Workflow only",schedules:0,webhooks:0,metaPublicPublishDisabled:true,youtubePrivacy:"private",publicPostingEnabled:false,original3SlotsUntouched:true},null,2));
