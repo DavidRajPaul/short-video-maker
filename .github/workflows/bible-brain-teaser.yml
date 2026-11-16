@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: '22'
       - name: Run teaser tests
-        run: node --test tools/bible-brain-teaser/brain-teaser.test.mjs
+        run: node --test tools/bible-brain-teaser/*.test.mjs
       - name: Validate draft n8n JSON
         run: |
           node --input-type=module -e "
