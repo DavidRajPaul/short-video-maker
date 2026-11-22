@@ -59,6 +59,8 @@ const christmasLabels = [
   "a cozy Christmas room full of garlands, wrapped gifts and lit decorations",
   "a Christmas market full of illuminated stalls and holiday wreaths",
   "a glowing Christmas nativity scene with figures and warm lights",
+  "a snowy house outside decorated with colorful Christmas lights and wreaths",
+  "a decorated Christmas tree illuminated outdoors amid snow",
   "a festive Santa Claus decoration with Christmas presents",
 ];
 const snowyChristmasOutdoorLabels = [
