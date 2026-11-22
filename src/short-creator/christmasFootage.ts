@@ -115,7 +115,7 @@ export async function getChristmasFootage(
             || (snowyOutdoor && attempt === 1)
             || attempt === groups.length - 1;
           const clip = useCurated
-            ? await pexels.findKnownChristmasVideo(CLIP_SECONDS, [...excluded], offset + scene,
+            ? await pexels.findKnownChristmasVideo(CLIP_SECONDS, [...excluded], offset * 2 + scene,
                 requireSnowyOutdoor ? "snowy-outdoor" : "general")
             : await pexels.findChristmasVideo(
                 group.terms,
