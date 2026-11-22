@@ -47,6 +47,61 @@ export function approvedClassification(scores: {label:string;score:number}[]) {
   return { approved: safe >= 0.50 && safeLabels.includes(scores[0]?.label)
     && critical.every(x => x.score < 0.10), safe };
 }
+// Distinguish actual Christmas objects from generic winter/sunset scenery.
+// Search APIs can return unrelated videos even for "Christmas" keywords.
+const christmasLabels = [
+  "a decorated Christmas tree with sparkling fairy lights and colorful ornaments",
+  "close-up of red and gold Christmas baubles hanging on a fir tree",
+  "a cozy Christmas room full of garlands, wrapped gifts and lit decorations",
+  "a Christmas market full of illuminated stalls and holiday wreaths",
+  "a glowing Christmas nativity scene with figures and warm lights",
+  "a festive Santa Claus decoration with Christmas presents",
+];
+const nonChristmasLabels = [
+  "a village with plain rooftops under a cloudy sky",
+  "a natural sunset over mountains and fields with no holiday decorations",
+  "a city street or buildings with ordinary lighting",
+  "winter snow covering an ordinary forest with no decorations",
+  "a seascape or a landscape with empty distant mountains",
+  "an ordinary house without festive decorations",
+  "a person walking outdoors in casual clothes",
+  "a generic cinematic background with abstract lights",
+];
+export function approvedChristmasClassification(scores: {label:string;score:number}[]) {
+  const festive=scores.filter(x=>christmasLabels.includes(x.label)).reduce((sum,x)=>sum+x.score,0);
+  const first=scores[0]?.label;
+  return {approved: christmasLabels.includes(first) && festive >= 0.47, festive, topLabel:first};
+}
+
+/**
+ * Samples an actual frame from each accepted stock clip and checks that the
+ * moving background visibly depicts Christmas, not merely winter scenery.
+ * Safety classification still runs separately; this checks relevance.
+ */
+export async function screenChristmasFootage(file: string): Promise<boolean> {
+  const dir=await mkdtemp(path.join(tmpdir(),"grace-christmas-review-"));
+  try {
+    const frame=path.join(dir,"christmas-relevance.jpg");
+    await runMedia("ffmpeg",["-y","-loglevel","error","-ss","3","-i",file,
+      "-frames:v","1","-vf","scale=256:256:force_original_aspect_ratio=decrease",frame],{timeout:30000});
+    classifier ??= loadClassifier().catch(error=>{classifier=undefined;throw error;});
+    const classify=await classifier;
+    const scores=await classify(frame,[...christmasLabels,...nonChristmasLabels]) as {label:string;score:number}[];
+    const result=approvedChristmasClassification(scores);
+    if(!result.approved){
+      logger.warn({christmasRelevance:Number(result.festive.toFixed(3)),topLabel:result.topLabel},
+        "Stock video is not visibly Christmas-related");
+    }
+    return result.approved;
+  }catch(error){
+    logger.warn({reason:error instanceof Error?error.message.slice(0,180):"unknown"},
+      "Christmas relevance verification unavailable");
+    return false;
+  }finally{
+    await rm(dir,{recursive:true,force:true});
+  }
+}
+
 const loadClassifier = async () => {
   const runtime = createRequire(require.resolve("kokoro-js"));
   const { pipeline } = runtime("@huggingface/transformers");
