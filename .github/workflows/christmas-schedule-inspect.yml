@@ -1,0 +1,13 @@
+name: Inspect Christmas afternoon schedule (read-only)
+on:
+  push:
+    branches: [feature/christmas-snowy-outdoor-rotation]
+jobs:
+  schedule:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - run: node tools/christmas-countdown/inspect-live-schedule.mjs
+        env:
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
