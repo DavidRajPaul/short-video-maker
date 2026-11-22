@@ -1,0 +1,42 @@
+name: Christmas 2026 - guarded publication
+on:
+  push:
+    branches: [feature/christmas-n8n-go-live]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check deployment scripts
+        run: |
+          node --check tools/christmas-countdown/activate-n8n.mjs
+          node --check tools/christmas-countdown/post-today.mjs
+      - name: Dry-run production routing and account state (read-only)
+        env:
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+        run: node tools/christmas-countdown/activate-n8n.mjs
+  activate:
+    if: contains(github.event.head_commit.message, '[christmas-go-live]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish temporary Christmas child, then route ONLY existing quote branch
+        env:
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+          APPLY_CHILD: 'true'
+          APPLY_PARENT: 'true'
+        run: node tools/christmas-countdown/activate-n8n.mjs
+  today:
+    if: contains(github.event.head_commit.message, '[christmas-post-today]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - name: Post today's Christmas video once via authenticated n8n webhook
+        env:
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+        run: node tools/christmas-countdown/post-today.mjs
