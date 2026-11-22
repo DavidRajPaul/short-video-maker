@@ -1,4 +1,6 @@
 import { allowedText, runMedia, screenFootage } from "./libraries/StockSafety";
+import { christmasCard } from "./christmas";
+import { ensureChristmasMusic } from "./christmasMusic";
 import { randomInt } from "node:crypto";
 import { OrientationEnum } from "./../types/shorts";
 /* eslint-disable @remotion/deterministic-randomness */
@@ -27,11 +29,10 @@ import type {
 } from "../types/shorts";
 
 export class ShortCreator {
-  private queue: {
-    sceneInput: SceneInput[];
-    config: RenderConfig;
-    id: string;
-  }[] = [];
+  private queue: (
+    | { kind: "short"; sceneInput: SceneInput[]; config: RenderConfig; id: string }
+    | { kind: "christmas"; date: string; id: string }
+  )[] = [];
   private failures = new Map<string, string>();
   constructor(
     private config: Config,
@@ -63,6 +64,7 @@ export class ShortCreator {
     const id = cuid();
     this.failures.delete(id);
     this.queue.push({
+      kind: "short",
       sceneInput,
       config,
       id,
@@ -73,18 +75,37 @@ export class ShortCreator {
     return id;
   }
 
+  /** Silent music-led seasonal shorts run in the existing serial render queue. */
+  public addChristmasToQueue(date: string): string {
+    if (!christmasCard(date)) throw new Error("Christmas countdown is not active on " + date);
+    const id = cuid();
+    this.failures.delete(id);
+    this.queue.push({ kind: "christmas", date, id });
+    if (this.queue.length === 1) void this.processQueue();
+    return id;
+  }
+
+  private async createChristmas(id: string, date: string): Promise<void> {
+    const card = christmasCard(date);
+    if (!card) throw new Error("Christmas countdown is not active");
+    const { music } = await ensureChristmasMusic(this.config, card);
+    await this.remotion.renderChristmas({ card, musicUrl: music.url }, id);
+  }
+
   private async processQueue(): Promise<void> {
     // todo add a semaphore
     if (this.queue.length === 0) {
       return;
     }
-    const { sceneInput, config, id } = this.queue[0];
-    logger.debug(
-      { sceneInput, config, id },
-      "Processing video item in the queue",
-    );
+    const item = this.queue[0];
+    const { id } = item;
+    logger.debug({ id, kind: item.kind }, "Processing video item in the queue");
     try {
-      await this.createShort(id, sceneInput, config);
+      if (item.kind === "christmas") {
+        await this.createChristmas(id, item.date);
+      } else {
+        await this.createShort(id, item.sceneInput, item.config);
+      }
       this.failures.delete(id);
       logger.debug({ id }, "Video created successfully");
     } catch (error: unknown) {
