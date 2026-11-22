@@ -1,7 +1,7 @@
 import fs from "fs-extra";
 import path from "path";
 import { createHash } from "node:crypto";
-import { runMedia, screenFootage } from "./libraries/StockSafety";
+import { runMedia, screenFootage, screenChristmasFootage } from "./libraries/StockSafety";
 import { OrientationEnum } from "../types/shorts";
 import { logger } from "../logger";
 import type { Config } from "../config";
@@ -80,12 +80,18 @@ export async function getChristmasFootage(
         if (!files.includes(raw)) files.push(raw);
         if (!files.includes(processed)) files.push(processed);
         try {
-          const clip = await pexels.findChristmasVideo(
-            group.terms,
-            CLIP_SECONDS,
-            [...excluded],
-            (offset + scene + attempt) % 2 === 0 ? "pexels" : "pixabay",
-          );
+          // Launch day uses editorially verified festive footage, not merely
+          // winter scenery that stock APIs matched to a Christmas search term.
+          // Other days search Pexels/Pixabay by terms, with curated fallback.
+          const useCurated = (card.date === "2026-11-22" && attempt === 0) || attempt === groups.length - 1;
+          const clip = useCurated
+            ? await pexels.findKnownChristmasVideo(CLIP_SECONDS, [...excluded], offset + scene)
+            : await pexels.findChristmasVideo(
+                group.terms,
+                CLIP_SECONDS,
+                [...excluded],
+                (offset + scene + attempt) % 2 === 0 ? "pexels" : "pixabay",
+              );
           excluded.add(clip.id); // Prevent duplicates within this render even on screening rejection.
           logger.info({ scene, stockId: clip.id, group: group.idx }, "Christmas stock candidate");
           // Explicit HTTPS only; stock clips are downloaded with bounded size and time.
@@ -104,6 +110,10 @@ export async function getChristmasFootage(
           if (stat.size < 120000) throw new Error("Processed Christmas clip is too small");
           if (!(await screenFootage(processed, CLIP_SECONDS, false))) {
             logger.warn({ stockId: clip.id }, "Christmas stock clip rejected by content safety screening");
+            continue;
+          }
+          if (!(await screenChristmasFootage(processed))) {
+            logger.warn({ stockId: clip.id }, "Stock clip lacked visible Christmas decorations");
             continue;
           }
           clips.push({
