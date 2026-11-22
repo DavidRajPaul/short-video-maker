@@ -1,6 +1,7 @@
 import { allowedText, runMedia, screenFootage } from "./libraries/StockSafety";
 import { christmasCard } from "./christmas";
 import { ensureChristmasMusic } from "./christmasMusic";
+import { getChristmasFootage, rememberChristmasClips } from "./christmasFootage";
 import { randomInt } from "node:crypto";
 import { OrientationEnum } from "./../types/shorts";
 /* eslint-disable @remotion/deterministic-randomness */
@@ -88,8 +89,19 @@ export class ShortCreator {
   private async createChristmas(id: string, date: string): Promise<void> {
     const card = christmasCard(date);
     if (!card) throw new Error("Christmas countdown is not active");
-    const { music } = await ensureChristmasMusic(this.config, card);
-    await this.remotion.renderChristmas({ card, musicUrl: music.url }, id);
+    const { music, track } = await ensureChristmasMusic(this.config, card);
+    const { clips, selectedIds, historyFile, cleanup } =
+      await getChristmasFootage(card, id, this.config, this.pexelsApi);
+    try {
+      await this.remotion.renderChristmas({
+        card, musicUrl: music.url, backgroundClips: clips,
+      }, id);
+      rememberChristmasClips(historyFile, selectedIds);
+      logger.info({ id, date, music: track.title, clips: selectedIds },
+        "Christmas short rendered with real approved stock footage");
+    } finally {
+      await cleanup();
+    }
   }
 
   private async processQueue(): Promise<void> {

@@ -287,7 +287,8 @@ export const RemotionRoot: React.FC = () => {
         height={1920}
         defaultProps={{
           card: christmasCard("2026-11-22")!,
-          musicUrl: "http://localhost:3123/api/tmp/christmas-deck-the-halls.ogg",
+          musicUrl: "http://localhost:3123/api/tmp/christmas-deck-the-halls.mp3",
+          backgroundClips: [{url: "https://videos.pexels.com/video-files/4625747/4625747-hd_1080_1920_24fps.mp4",durationFrames:325,stockId:"dev-only-example"}],
         }}
       />
       <Composition

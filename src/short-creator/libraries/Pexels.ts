@@ -125,6 +125,52 @@ export class PexelsAPI {
     return video;
   }
 
+  /**
+   * Seasonal Christmas footage: ONLY Pexels/Pixabay, not Commons or generic
+   * devotional fallback. Returns real moving stock video selected from
+   * explicit holiday search terms. Caller screens actual extracted frames.
+   */
+  async findChristmasVideo(
+    searchTerms: string[],
+    minSeconds: number,
+    excludeIds: string[],
+    prefer: "pexels" | "pixabay" = "pexels",
+  ): Promise<Video> {
+    const terms = [...new Set(searchTerms.map(t => t.trim()).filter(t =>
+      t && allowedText(t) && /christmas/i.test(t),
+    ))].slice(0, 3);
+    if (!terms.length) throw new Error("Only explicitly Christmas-related search terms are allowed");
+    const providers: ("pexels" | "pixabay")[] =
+      prefer === "pixabay" ? ["pixabay", "pexels"] : ["pexels", "pixabay"];
+    const page = 1 + (this.turn++ % 2);
+    for (const term of terms) {
+      for (const provider of providers) {
+        if (provider === "pixabay" && !process.env.PIXABAY_API_KEY) continue;
+        try {
+          if (provider === "pixabay") {
+            const clip = await findPixabay(term, minSeconds, excludeIds, OrientationEnum.portrait, 10000);
+            if (clip) return clip;
+          } else {
+            return await this._findVideo(term, minSeconds, excludeIds, OrientationEnum.portrait, 10000, page);
+          }
+        } catch (error) {
+          logger.warn({ provider, term, reason: error instanceof Error ? error.message.slice(0,100) : "" },
+            "Christmas portrait video search failed");
+        }
+      }
+    }
+    // Christmas-lights landscapes also crop attractively into vertical shorts.
+    // Last-resort fallback is a REAL stock video, never synthetic art.
+    for (const term of terms.slice(0, 2)) {
+      try {
+        return await this._findVideo(term, minSeconds, excludeIds, OrientationEnum.landscape, 10000, 1);
+      } catch {
+        // Try next explicit festive search term.
+      }
+    }
+    throw new Error("No Christmas video found on Pexels or Pixabay");
+  }
+
   async findVideo(
     searchTerms: string[],
     minDurationSeconds: number,
