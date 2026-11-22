@@ -1,5 +1,6 @@
 import { describe,it,expect } from "vitest";
-import { approvedChristmasClassification } from "./libraries/StockSafety";
+import { approvedChristmasClassification, approvedSnowyOutdoorChristmasClassification } from "./libraries/StockSafety";
+import { christmasSceneTheme } from "./christmasFootage";
 
 describe("Christmas stock relevance (not merely generic snow scenery)",()=>{
   it("accepts clearly decorated Christmas imagery",()=>{
@@ -27,5 +28,31 @@ describe("Christmas stock relevance (not merely generic snow scenery)",()=>{
       {label:"a festive Santa Claus decoration with Christmas presents",score:0.15},
     ];
     expect(approvedChristmasClassification(scores).approved).toBe(false);
+  });
+});
+
+describe("Outdoor snowy decorations",()=>{
+  it("prioritizes a snowy outdoor Christmas clip every few days",()=>{
+    expect(christmasSceneTheme("2026-11-22",0)).toBe("general");
+    expect(christmasSceneTheme("2026-11-22",1)).toBe("general");
+    expect(christmasSceneTheme("2026-11-23",0)).toBe("general");
+    expect(christmasSceneTheme("2026-11-23",1)).toBe("snowy-outdoor");
+    expect(christmasSceneTheme("2026-11-26",1)).toBe("snowy-outdoor");
+  });
+  it("accepts snow on an outdoor house only with visible Christmas decorations",()=>{
+    const scores=[
+      {label:"a snowy house exterior decorated with colorful Christmas string lights and wreaths",score:0.62},
+      {label:"an ordinary snow-covered street with no Christmas lights or decorations",score:0.19},
+      {label:"a garden covered with snow and decorated with Christmas lights",score:0.19},
+    ];
+    expect(approvedSnowyOutdoorChristmasClassification(scores).approved).toBe(true);
+  });
+  it("rejects generic winter nature shots and indoor festive trees for the outdoor snowy slot",()=>{
+    const generic=[
+      {label:"a snowy mountain, field or forest without any holiday decorations",score:0.57},
+      {label:"an outdoor Christmas market in falling snow filled with warm festive lights",score:0.19},
+      {label:"an ordinary decorated Christmas tree in a warm indoor living room",score:0.24},
+    ];
+    expect(approvedSnowyOutdoorChristmasClassification(generic).approved).toBe(false);
   });
 });
