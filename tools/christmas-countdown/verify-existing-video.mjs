@@ -1,0 +1,13 @@
+import fs from "node:fs/promises";
+const id="cmwrm9ddc000001r6asw4e7t4";
+const base="https://short-video-maker-production-4274.up.railway.app";
+const res=await fetch(base+"/api/short-video/"+id,{signal:AbortSignal.timeout(45000)});
+if(!res.ok)throw Error("Existing video not accessible HTTP "+res.status);
+const video=Buffer.from(await res.arrayBuffer());
+const ascii=(s)=>video.indexOf(Buffer.from(s,"ascii"))>=0;
+const result={bytes:video.length,videoId:id,mp4:ascii("ftyp"),videoCodec:ascii("avc1"),audioTrack:ascii("soun"),audioCodec:ascii("mp4a"),movieHeader:ascii("moov")};
+console.log(JSON.stringify(result));
+if(!result.mp4||!result.videoCodec||!result.audioTrack||!result.audioCodec||!result.movieHeader)throw Error("Expected H264 + AAC video/audio tracks missing");
+await fs.writeFile("christmas-preview-2026-11-22.mp4",video);
+const cover=await fetch(base+"/api/short-video/"+id+"/cover.jpg",{signal:AbortSignal.timeout(15000)});
+if(cover.ok)await fs.writeFile("christmas-preview-cover.jpg",Buffer.from(await cover.arrayBuffer()));
