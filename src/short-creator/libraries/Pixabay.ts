@@ -61,12 +61,14 @@ export async function findPixabay(
   excluded: string[],
   orientation: OrientationEnum,
   timeout: number,
+  requireChristmasMetadata = false,
 ): Promise<Video | undefined> {
   const hits = await search(term, timeout);
   const candidates: Video[] = [];
   for (const hit of hits) {
     const id = `pixabay-${hit.id}`;
     if (hit.duration < seconds + 0.5 || excluded.includes(id) || !allowedText(hit.tags ?? "")) continue;
+    if (requireChristmasMetadata && !/christmas|xmas|ornament|bauble|wreath|garland|santa|festive|holiday|nativity/i.test(hit.tags ?? "")) continue;
     const files = Object.values(hit.videos).filter(file =>
       file.url?.startsWith("https://") && Math.min(file.width, file.height) >= 720,
     );

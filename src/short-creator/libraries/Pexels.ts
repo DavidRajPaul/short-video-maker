@@ -19,6 +19,7 @@ export class PexelsAPI {
     orientation: OrientationEnum,
     timeout: number,
     page: number,
+    requireHolidaySlug = false,
   ): Promise<Video> {
     if (!this.API_KEY) {
       throw new Error("API key not set");
@@ -56,6 +57,7 @@ export class PexelsAPI {
     const videos = response.videos as {
       id: string;
       duration: number;
+      url?: string;
       video_files: {
         fps: number;
         quality: string;
@@ -78,6 +80,11 @@ export class PexelsAPI {
     const filteredVideos = videos
       .map((video) => {
         if (excludeIds.includes(String(video.id))) {
+          return;
+        }
+        // Pexels keyword search frequently returns generic scenery. Its
+        // public editorial URL slug gives us an additional relevance check.
+        if (requireHolidaySlug && !/christmas|xmas|ornament|bauble|wreath|garland|santa|festive|holiday|nativity/i.test(String(video.url ?? ""))) {
           return;
         }
         if (!video.video_files.length) {
@@ -130,6 +137,61 @@ export class PexelsAPI {
    * devotional fallback. Returns real moving stock video selected from
    * explicit holiday search terms. Caller screens actual extracted frames.
    */
+  /**
+   * Editorially inspected Christmas videos on Pexels. An API search still
+   * runs for most days; known clips provide a fail-closed seasonal fallback
+   * and a high-confidence first-day launch.
+   *
+   * Source pages: https://www.pexels.com/video/<slug>-<id>/
+   * These are stock-video IDs, not CDN URLs invented by the renderer.
+   */
+  private readonly knownChristmasVideos = [
+    19733271, // vertical sparkling Christmas tree
+    35315032, // vertical Christmas ornaments
+    35282418, // festive decorated Christmas tree
+    35047385, // vivid Christmas ornaments
+    35493265, // twinkling lit Christmas tree
+    6135314,  // tree ornaments and lights
+    6287707,  // Christmas lights + ornaments
+    10334428, // closeup of flashing Christmas lights
+  ];
+
+  async findKnownChristmasVideo(
+    minSeconds: number,
+    excludeIds: string[],
+    ordinal = 0,
+  ): Promise<Video> {
+    if (!this.API_KEY) throw new Error("Pexels API key missing");
+    const candidates = [
+      ...this.knownChristmasVideos.slice(ordinal % this.knownChristmasVideos.length),
+      ...this.knownChristmasVideos.slice(0,ordinal % this.knownChristmasVideos.length),
+    ];
+    for (const id of candidates) {
+      if (excludeIds.includes(String(id))) continue;
+      try {
+        const response = await fetch("https://api.pexels.com/videos/videos/" + id, {
+          headers: { Authorization: this.API_KEY }, signal: AbortSignal.timeout(11000),
+        });
+        if (!response.ok) continue;
+        const entry = await response.json() as {
+          id:number; duration:number;
+          video_files:{ quality:string; width:number; height:number; link:string }[];
+        };
+        if(entry.duration < minSeconds + 0.5 || !Array.isArray(entry.video_files))continue;
+        const files=entry.video_files.filter(f=>f.quality==="hd"&&f.link?.startsWith("https://")&&
+          f.width>=720&&f.height>=1280&&f.height>f.width&&f.height<=2560
+        ).sort((a,b)=>b.width*b.height-a.width*a.height);
+        if(files.length){
+          const file=files[0];
+          return {id:String(id),url:file.link,width:file.width,height:file.height};
+        }
+      }catch{
+        // Try the next externally verified Christmas stock item.
+      }
+    }
+    throw new Error("Curated Christmas stock list is unavailable or exhausted");
+  }
+
   async findChristmasVideo(
     searchTerms: string[],
     minSeconds: number,
@@ -148,10 +210,10 @@ export class PexelsAPI {
         if (provider === "pixabay" && !process.env.PIXABAY_API_KEY) continue;
         try {
           if (provider === "pixabay") {
-            const clip = await findPixabay(term, minSeconds, excludeIds, OrientationEnum.portrait, 10000);
+            const clip = await findPixabay(term, minSeconds, excludeIds, OrientationEnum.portrait, 10000, true);
             if (clip) return clip;
           } else {
-            return await this._findVideo(term, minSeconds, excludeIds, OrientationEnum.portrait, 10000, page);
+            return await this._findVideo(term, minSeconds, excludeIds, OrientationEnum.portrait, 10000, page, true);
           }
         } catch (error) {
           logger.warn({ provider, term, reason: error instanceof Error ? error.message.slice(0,100) : "" },
@@ -163,7 +225,7 @@ export class PexelsAPI {
     // Last-resort fallback is a REAL stock video, never synthetic art.
     for (const term of terms.slice(0, 2)) {
       try {
-        return await this._findVideo(term, minSeconds, excludeIds, OrientationEnum.landscape, 10000, 1);
+        return await this._findVideo(term, minSeconds, excludeIds, OrientationEnum.landscape, 10000, 1, true);
       } catch {
         // Try next explicit festive search term.
       }
