@@ -10,6 +10,8 @@ import { validateCreateShortInput } from "../validator";
 import { ShortCreator } from "../../short-creator/ShortCreator";
 import { logger } from "../../logger";
 import { Config } from "../../config";
+import { christmasCard, indiaDate } from "../../short-creator/christmas";
+import { selectChristmasTrack } from "../../short-creator/christmasMusic";
 
 // todo abstract class
 export class APIRouter {
@@ -35,6 +37,34 @@ export class APIRouter {
       if (!fs.existsSync(file)) { res.sendStatus(404); return; }
       res.sendFile(path.resolve(file));
     });
+    // Return 409 outside the Christmas season: n8n must route to normal quote.
+    this.router.post("/christmas-countdown", (req: ExpressRequest, res: ExpressResponse) => {
+      try {
+        const date = req.body?.date === undefined ? indiaDate() : String(req.body.date);
+        const card = christmasCard(date);
+        if (!card) {
+          res.status(409).json({ active: false, mode: "normal_quote", date });
+          return;
+        }
+        const track = selectChristmasTrack(card);
+        const videoId = this.shortCreator.addChristmasToQueue(date);
+        res.status(201).json({
+          active: true, videoId, date,
+          contentId: card.contentId,
+          contentType: "christmas_countdown",
+          mode: card.mode,
+          title: card.title,
+          description: card.description + "\\n\\n" + track.credit,
+          tags: ["Christmas", "ChristmasCountdown", "BirthOfChrist", "GraceInAMinute"],
+          track: track.title,
+          license: track.license,
+          coverUrl: "/api/short-video/" + videoId + "/cover.jpg",
+        });
+      } catch (error) {
+        res.status(400).json({ error: "Invalid Christmas date", message: error instanceof Error ? error.message : String(error) });
+      }
+    });
+
     this.router.post(
       "/short-video",
       async (req: ExpressRequest, res: ExpressResponse) => {
@@ -155,6 +185,9 @@ export class APIRouter {
 
         if (tmpFile.endsWith(".mp3")) {
           res.setHeader("Content-Type", "audio/mpeg");
+        }
+        if (tmpFile.endsWith(".ogg") || tmpFile.endsWith(".oga")) {
+          res.setHeader("Content-Type", "audio/ogg");
         }
         if (tmpFile.endsWith(".wav")) {
           res.setHeader("Content-Type", "audio/wav");

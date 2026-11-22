@@ -1,0 +1,36 @@
+name: Christmas countdown renderer and n8n read-only inspection
+on:
+  push:
+    branches: [feature/christmas-countdown-2026]
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tools/christmas-countdown/**'
+      - '.github/workflows/christmas-countdown-ci.yml'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node tools/christmas-countdown/check-music-sources.mjs
+      - run: pnpm exec vitest run src/short-creator/christmas.test.ts
+      - run: pnpm exec tsc --project tsconfig.build.json --noEmit
+  inspect-n8n:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect existing 3-slot workflow without modifying it
+        env:
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+        run: node tools/christmas-countdown/inspect-n8n.mjs

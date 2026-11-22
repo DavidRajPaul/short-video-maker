@@ -3,6 +3,8 @@ import { shortVideoSchema } from "../utils";
 import { PortraitVideo } from "../videos/PortraitVideo";
 import { LandscapeVideo } from "../videos/LandscapeVideo";
 import { TestVideo } from "../videos/Test";
+import { ChristmasCountdownVideo } from "../videos/ChristmasCountdownVideo";
+import { christmasCard } from "../../short-creator/christmas";
 import z from "zod";
 import { AvailableComponentsEnum } from "../types";
 
@@ -275,6 +277,18 @@ export const RemotionRoot: React.FC = () => {
           },
         }}
         calculateMetadata={calculateMetadata}
+      />
+      <Composition
+        id="ChristmasCountdownVideo"
+        component={ChristmasCountdownVideo}
+        fps={FPS}
+        durationInFrames={325}
+        width={1080}
+        height={1920}
+        defaultProps={{
+          card: christmasCard("2026-11-22")!,
+          musicUrl: "http://localhost:3123/api/tmp/christmas-deck-the-halls.ogg",
+        }}
       />
       <Composition
         id="TestVideo"
