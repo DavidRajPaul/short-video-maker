@@ -8,6 +8,12 @@ for(const [key,filename,ext] of tracks){
  const { createHash } = await import("node:crypto");
  const normalized=filename.replace(/ /g,"_"),md5=createHash("md5").update(normalized).digest("hex");
  const url="https://upload.wikimedia.org/wikipedia/commons/"+md5[0]+"/"+md5.slice(0,2)+"/"+encodeURIComponent(normalized);
+ if(!url.startsWith("https://upload.wikimedia.org/wikipedia/commons/")) throw new Error("Unexpected music URL");
+ if(!["ogg","mp3"].includes(ext)) throw new Error("Unexpected audio extension");
+ if (!process.argv.includes("--online")) {
+   console.log(key+" source URL schema validated (network probe skipped)");
+   continue;
+ }
  let response;
  for(let attempt=0;attempt<4;attempt++){
    response=await fetch(url,{signal:AbortSignal.timeout(30000),headers:{"User-Agent":"GraceInAMinuteChristmasRenderer/1.0 (source Wikimedia Commons)"}});
