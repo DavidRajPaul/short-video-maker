@@ -158,12 +158,15 @@ export class PexelsAPI {
   // Verified Pexels editorial pages: outdoor houses and streets with
   // snow AND Christmas decorations; API duration/orientation is checked live.
   private readonly knownSnowyOutdoorChristmasVideos = [
-    6276334, // snow-covered home decorated for Christmas Eve (vertical)
-    4076196, // snowy outdoor house covered in Christmas lights
-    3955643, // outdoor Christmas lights on a house
-    4076197, // snowy street and illuminated house
+    4076197, // outdoor house in snowy street
+    3955643, // house covered in Christmas lights
+    4076196, // snow-covered illuminated house
+    6276334, // real vertical clip: Christmas lights on snow-covered house and garden
+    35337609, // vertical snow-covered yard with glowing Christmas lights
+    6276324, // family approaching decorated house through snowy area
+    35426662, // snowy night street with festive illuminated building
+    3958366, // snowy sidewalk with Christmas lights
     4076115, // decorated snowy residential street
-    6276324, // snowy home with Christmas decorations
   ];
 
   async findKnownChristmasVideo(
