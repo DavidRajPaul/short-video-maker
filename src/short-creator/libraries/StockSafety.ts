@@ -17,6 +17,9 @@ const safeLabels = [
   "a peaceful landscape", "an ordinary object indoors",
   "a fully clothed person in an everyday setting", "architecture or a place of worship",
   "an open Bible or Christian prayer book being read",
+  "a Christmas tree decorated with string lights and ornaments",
+  "festive Christmas wreaths, presents and glowing ornaments",
+  "Christmas market decorations and colorful holiday lights",
   "a Christian church interior, stained glass window, or cross",
 ];
 const unsafeLabels = ["nudity or sexual imagery", "suggestive posing or revealing underwear", "blood, injury or graphic violence", "hate symbols or extremist propaganda", "drug abuse or weapons", "disturbing or frightening imagery", "a brand advertisement or prominent commercial logo"];
