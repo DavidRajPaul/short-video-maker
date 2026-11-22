@@ -1,0 +1,27 @@
+name: Christmas Nov 23 outdoor stock preview (private only)
+on:
+  push:
+    branches: [qa/christmas-snowy-outdoor-preview]
+jobs:
+  render-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 11
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render Nov 23 outdoor snowy clip (no publishing)
+        run: node tools/christmas-countdown/preview-snowy-outdoor.mjs
+      - name: Verify codec and duration
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=noprint_wrappers=1 christmas-nov23-outdoor-preview.mp4 | grep -q 'codec_name=aac'
+          ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1 christmas-nov23-outdoor-preview.mp4
+      - name: Upload verified private preview
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: christmas-nov23-outdoor-preview
+          path: |
+            christmas-nov23-outdoor-preview.mp4
+            christmas-nov23-outdoor-cover.jpg
+          retention-days: 7
