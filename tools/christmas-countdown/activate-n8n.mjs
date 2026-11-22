@@ -15,7 +15,7 @@ const [stage,quiz,original,publisher]=await Promise.all([
  api("/workflows/"+STAGING),api("/workflows/"+QUIZ),api("/workflows/"+ORIGINAL),api("/workflows/"+PUBLISHER)
 ]);
 if(!original.activeVersionId||!quiz.activeVersionId||!publisher.activeVersionId)throw Error("Existing original/quiz/publisher is not published");
-if(original.settings?.timezone!=="Asia/Kolkata")throw Error("Parent timezone must be Asia/Kolkata");
+// Preserve the original schedule timezone unchanged. The date gate itself explicitly uses Asia/Kolkata.
 const exactNode=(nodes,name)=>{
  const item=nodes.find(n=>n.name===name);
  if(!item)throw Error("Expected node not found: "+name);
