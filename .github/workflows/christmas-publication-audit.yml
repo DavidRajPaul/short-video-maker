@@ -1,0 +1,13 @@
+name: Christmas public posting read-only audit
+on:
+  push:
+    branches: [chore/christmas-publication-audit]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - run: node tools/christmas-countdown/audit-publication.mjs
+        env:
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
