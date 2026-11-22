@@ -15,11 +15,11 @@ Video: 13 seconds, vertical 1080×1920, 25 fps, glowing letters, festive garland
 
 ## Real Christmas instrumentals — commercial-use licenses
 
-On first render the server downloads the selected Wikimedia Commons recording into the renderer's existing temp directory and serves it locally; there is **no separate user download step**. Downloads fail closed on network/invalid audio. Existing render music and other 3 slots are unaffected.
+On first render the server downloads the selected Kevin MacLeod official recording into the renderer's existing temp directory and serves it locally; there is **no separate user download step**. Downloads fail closed on network/invalid audio. Existing render music and other 3 slots are unaffected.
 
-* `Deck the Halls` — United States Air Force Band, public-domain federal government recording, https://commons.wikimedia.org/wiki/File:Deck_the_Halls_(USAFB_Concert_Band)_-_abridged.ogg
-* `Jingle Bells` — Kevin MacLeod, CC BY 3.0, https://commons.wikimedia.org/wiki/File:Jingle_Bells_(ISRC_USUAN1100187).mp3
-* `Silent Night` — Kevin MacLeod, CC BY 3.0, https://commons.wikimedia.org/wiki/File:Silent_Night_(ISRC_USUAN1100075).mp3
+** `Deck the Halls B` — Kevin MacLeod, CC BY 4.0, https://incompetech.com/music/royalty-free/index.html?Search=Search&isrc=USUAN1100368n federal government recording, https://commons.wikimedia.org/wiki/File:Deck_the_Halls_(USAFB_Concert_Band)_-_abridged.ogg
+** `Jingle Bells` — Kevin MacLeod, CC BY 4.0, https://incompetech.com/music/royalty-free/index.html?Search=Search&isrc=USUAN1100187ns.wikimedia.org/wiki/File:Jingle_Bells_(ISRC_USUAN1100187).mp3
+** `Silent Night` — Kevin MacLeod, CC BY 4.0, https://incompetech.com/music/royalty-free/index.html?Search=Search&isrc=USUAN1100075ns.wikimedia.org/wiki/File:Silent_Night_(ISRC_USUAN1100075).mp3
 
 **Required:** Publish the API-provided `description` unchanged including the attribution text. These tracks may still receive erroneous automated Content ID matches; monitor and resolve claims. The copyrighted movie recording of *The Polar Express* is NOT in the soundtrack; use it only with suitable cross-platform synchronization rights.
 
