@@ -34,7 +34,8 @@ describe("Christmas 2026 seasonal schedule", () => {
   it("never selects a copyrighted feature film recording", () => {
     const c=christmasCard("2026-11-22")!;
     const track=selectChristmasTrack(c);
-    expect(track.source).toContain("commons.wikimedia.org");
+    expect(track.source).toContain("incompetech.com");
+    expect(track.license).toBe("CC BY 4.0");
     expect(track.title).not.toMatch(/polar express/i);
   });
 });
