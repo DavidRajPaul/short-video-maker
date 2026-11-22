@@ -1,102 +1,128 @@
 import React from "react";
-import { AbsoluteFill, Audio, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import {
+  AbsoluteFill, Audio, interpolate, OffthreadVideo, Sequence,
+  useCurrentFrame, useVideoConfig,
+} from "remotion";
+import { loadFont as loadScriptFont } from "@remotion/google-fonts/GreatVibes";
+import { loadFont as loadDisplayFont } from "@remotion/google-fonts/CinzelDecorative";
 import { Watermark } from "./Watermark";
 import type { ChristmasCard } from "../../short-creator/christmas";
+
+const scriptFont = loadScriptFont().fontFamily;
+const displayFont = loadDisplayFont().fontFamily;
 
 export type ChristmasVideoProps = {
   card: ChristmasCard;
   musicUrl: string;
+  /** REAL stock video clips from Pexels/Pixabay; mandatory for final render. */
+  backgroundClips: { url: string; durationFrames: number; stockId: string }[];
 };
 
-const W = 1080;
-const H = 1920;
-const dots = Array.from({ length: 85 }, (_, i) => ({
-  x: (i * 137.508 + 23) % W,
-  y: (i * 315.7 + 47) % H,
-  size: 2 + (i % 4) * 2,
-  speed: 0.4 + (i % 7) * 0.19,
-}));
+/**
+ * Nothing synthetic in the background: only real Pexels/Pixabay moving stock.
+ * Glitter and golden Christmas lights are constrained to the LETTER SHAPES,
+ * not a separate animated tree, border, snow overlay or floating particles.
+ */
+const GlitterText: React.FC<{
+  children: string;
+  size: number;
+  script?: boolean;
+  tracking?: number;
+}> = ({children, size, script = false, tracking = 0}) => {
+  const frame = useCurrentFrame();
+  const tick = frame * 2;
+  return (
+    <div style={{
+      fontFamily: script ? scriptFont : displayFont,
+      fontSize: size,
+      fontWeight: script ? 400 : 700,
+      lineHeight: script ? 1.35 : 1.15,
+      letterSpacing: tracking,
+      width: "100%",
+      textAlign: "center",
+      // Motion in the GOLD foil texture, clipped to the exact glyphs.
+      backgroundImage: "radial-gradient(circle at " + (18 + (tick % 68)) + "% 20%,#ffffff 0%,#fff9bf 7%,transparent 12%)," +
+        "repeating-linear-gradient(108deg,transparent 0px,transparent 26px,#fff9cd 29px,transparent 33px,transparent 76px)," +
+        "linear-gradient(90deg,#a36b20,#ffdf77,#fffdec,#e4aa3f,#fff9c0,#ac7227)",
+      backgroundSize: "100% 100%, 280px 100%, 100% 100%",
+      backgroundPosition: "0 0," + (tick % 280) + "px 0,0 0",
+      WebkitBackgroundClip: "text",
+      backgroundClip: "text",
+      WebkitTextFillColor: "transparent",
+      filter: "drop-shadow(0 0 " + (5 + 2 * Math.sin(frame / 5)) + "px #ffe2a0) drop-shadow(0 4px 10px #10070c)",
+      whiteSpace: "normal",
+      overflowWrap: "normal",
+    }}>{children}</div>
+  );
+};
 
-/** Deterministic Remotion animation: no AI assets, no text running/marquee. */
-export const ChristmasCountdownVideo: React.FC<ChristmasVideoProps> = ({ card, musicUrl }) => {
+export const ChristmasCountdownVideo: React.FC<ChristmasVideoProps> = ({ card, musicUrl, backgroundClips }) => {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
-  const t = frame / 25;
-  const appear = interpolate(frame, [0, 22], [0.87, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const fade = interpolate(frame, [durationInFrames - 20, durationInFrames], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const palette = card.colorway === "blue"
-    ? ["#071f42", "#17447b", "#65b9d2"]
-    : card.colorway === "green"
-      ? ["#082a28", "#165348", "#dfb85d"]
-      : ["#340919", "#851f2b", "#f1a84a"];
-  const sparkle = (i: number) => 0.38 + Math.sin(t * (2.4 + i % 3) + i * 7) * 0.30;
-
+  if (!backgroundClips.length || backgroundClips.some(c=>!c.url || c.durationFrames <= 0)) {
+    throw new Error("Christmas Countdown requires verified REAL stock background videos");
+  }
+  const appear = interpolate(frame, [0, 20], [0.92, 1], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  });
+  const fade = interpolate(frame, [durationInFrames - 18, durationInFrames], [1, 0], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  });
+  let start = 0;
   return (
-    <AbsoluteFill style={{ color: "#fff8df", overflow: "hidden", fontFamily: "Georgia, Times New Roman, serif" }}>
-      <AbsoluteFill style={{ background: `radial-gradient(circle at 50% 46%, ${palette[1]} 0%, ${palette[0]} 80%)` }} />
-      <div style={{ position: "absolute", inset: -100, opacity: 0.26,
-        background: `radial-gradient(circle at 18% 10%,${palette[2]} 0%,transparent 23%),radial-gradient(circle at 82% 72%,${palette[2]} 0%,transparent 29%)` }} />
-
-      {/* Elegant tree made of golden lights; leaves safe room for readable text. */}
-      {Array.from({ length: 7 }, (_, row) => Array.from({ length: 7 + row * 2 }, (_, col) => {
-        const total = 7 + row * 2;
-        const xx = W / 2 + (col - (total - 1) / 2) * (17 + row * 7);
-        const yy = 1205 + row * 58;
-        return <div key={row + "-" + col} style={{
-          position: "absolute", left: xx, top: yy, borderRadius: "50%",
-          width: 7 + (col % 3) * 3, height: 7 + (col % 3) * 3,
-          background: col % 4 === 0 ? "#ff646a" : "#fff2a8",
-          boxShadow: "0 0 20px 7px #ffeb9859", opacity: sparkle(row * 15 + col),
-        }} />;
-      }))}
-
-      {/* Subtle drifting snow and light flecks. */}
-      {dots.map((dot, i) => (
-        <div key={i} style={{
-          position: "absolute", left: dot.x + Math.sin(t * 0.6 + i) * 25,
-          top: (dot.y + t * (12 + dot.speed * 25)) % H,
-          width: dot.size, height: dot.size, borderRadius: "50%",
-          opacity: 0.25 + 0.45 * Math.abs(Math.sin(t + i)),
-          background: i % 4 ? "#fffef1" : "#ffd16a", boxShadow: "0 0 12px #ffffff",
-        }} />
-      ))}
-
-      {/* Light garland across the upper corners. */}
-      <div style={{ position: "absolute", left: 0, top: 135, width: W, height: 4, background: "#e9b96b" }} />
-      {Array.from({length: 15}, (_,i) => <div key={i} style={{
-        position: "absolute", left: 38 + i * 72, top: 128,
-        width: 23, height: 31, borderRadius: "50% 50% 45% 45%",
-        background: i % 3 === 0 ? "#ffbd64" : i % 3 === 1 ? "#ed7471" : "#b6fff1",
-        boxShadow: `0 0 ${16 + 7 * Math.sin(t * 2.5 + i)}px ${5 + 2 * Math.sin(t + i)}px #fff5b877`,
-      }} />)}
-      <div style={{ position:"absolute",top:290,left:70,right:70,textAlign:"center",fontSize:37,letterSpacing:9,fontFamily:"Arial, sans-serif",fontWeight:700,color:"#f8d388" }}>GRACE IN A MINUTE</div>
-
-      <div style={{ position: "absolute", left: 50, right: 50, top: 475, textAlign: "center",
-        transform: `scale(${appear})`, opacity: fade }}>
+    <AbsoluteFill style={{overflow:"hidden", backgroundColor:"#05070a"}}>
+      {backgroundClips.map((clip, i) => {
+        const from = start;
+        start += clip.durationFrames;
+        return (
+          <Sequence key={clip.stockId + i} from={from} durationInFrames={clip.durationFrames}>
+            <AbsoluteFill>
+              <OffthreadVideo src={clip.url} muted style={{
+                width:"100%",height:"100%",objectFit:"cover",
+              }} />
+            </AbsoluteFill>
+          </Sequence>
+        );
+      })}
+      {/* Gentle readability tint; the only decoration is on the LETTERING itself. */}
+      <AbsoluteFill style={{
+        background: "linear-gradient(180deg,rgba(7,9,15,0.04) 0%,rgba(10,13,22,0.33) 34%,rgba(12,10,18,0.47) 62%,rgba(7,9,15,0.15) 100%)",
+      }} />
+      <AbsoluteFill style={{
+        justifyContent:"center", alignItems:"center",
+        padding:"0 54px 160px", boxSizing:"border-box",
+        transform:"scale(" + appear + ")", opacity:fade,
+      }}>
         {card.mode === "countdown" ? (
           <>
-            <div style={{ fontFamily:"Georgia, serif", fontWeight: 900, fontSize: 245, lineHeight: 1.15,
-              color:"#fff5d0",textShadow:"0 0 32px #ffdf76, 0 8px 30px #080d22" }}>{card.daysRemaining}</div>
-            <div style={{fontFamily:"Arial, sans-serif",fontSize:53,letterSpacing:8,fontWeight:850,marginTop:20,
-              color:"#ffffff",textShadow:"0 2px 18px #070c1e"}}>{card.daysRemaining === 1 ? "DAY TO" : "DAYS TO"}</div>
-            <div style={{fontSize:card.emphasis === "Birth of Christ" ? 106 : card.emphasis === "Christmas Eve" ? 118 : 148,
-              fontWeight:900,marginTop:65,lineHeight:1.06,color:"#ffe7a2",
-              textShadow:"0 0 14px #ffe7a2, 0 0 36px #f7ba50, 0 7px 18px #30060b"}}>{card.emphasis}</div>
+            <GlitterText size={238}>{String(card.daysRemaining)}</GlitterText>
+            <div style={{marginTop:16}}>
+              <GlitterText size={53} tracking={5}>{card.daysRemaining === 1 ? "DAY TO" : "DAYS TO"}</GlitterText>
+            </div>
+            <div style={{marginTop:28,width:"100%"}}>
+              <GlitterText script size={
+                card.emphasis === "Birth of Christ" ? 116 :
+                card.emphasis === "Christmas Eve" ? 148 : 190
+              }>{card.emphasis}</GlitterText>
+            </div>
+          </>
+        ) : card.mode === "christmas_day" ? (
+          <>
+            <GlitterText script size={190}>Merry Christmas</GlitterText>
+            <GlitterText size={60}>BIRTH OF CHRIST</GlitterText>
           </>
         ) : (
           <>
-            <div style={{fontSize:card.mode==="finale"?100:147,lineHeight:1.15,fontWeight:900,
-              color:"#fff4c8",textShadow:"0 0 22px #f8c656,0 0 48px #ce763b"}}>{card.headline}</div>
-            <div style={{fontSize:83,marginTop:60,color:"#ffe29a",textShadow:"0 0 24px #f5c069"}}>{card.emphasis}</div>
+            <GlitterText script size={154}>Until Next Christmas</GlitterText>
+            <GlitterText size={62}>ONE MORE YEAR</GlitterText>
           </>
         )}
-        <div style={{marginTop:95,height:3,background:"linear-gradient(90deg,transparent,#efc771,transparent)"}} />
-        <div style={{marginTop:36,fontFamily:"Arial, sans-serif",fontSize:43,lineHeight:1.35,fontWeight:700,
-          textShadow:"0 3px 12px #071324"}}>{card.subline}</div>
-      </div>
-      {/* Brand and visual disclaimer free: no voice, no unreadable running caption. */}
+      </AbsoluteFill>
       <Watermark />
-      <Audio src={musicUrl} volume={(f)=>interpolate(f,[0,12,durationInFrames-24,durationInFrames],[0,0.82,0.82,0],{extrapolateLeft:"clamp",extrapolateRight:"clamp"})} />
+      <Audio src={musicUrl} volume={f => interpolate(
+        f,[0,12,durationInFrames-22,durationInFrames],[0,0.86,0.86,0],
+        {extrapolateLeft:"clamp",extrapolateRight:"clamp"},
+      )}/>
     </AbsoluteFill>
   );
 };
