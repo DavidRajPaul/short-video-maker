@@ -13,6 +13,7 @@ jobs:
         env:
           N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
   stage-inactive:
+    if: contains(github.event.head_commit.message, '[christmas-stage]')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -28,6 +29,7 @@ jobs:
           N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
           APPLY_STAGE: "true"
   production-preview:
+    if: contains(github.event.head_commit.message, '[christmas-preview]')
     runs-on: ubuntu-latest
     timeout-minutes: 9
     steps:
@@ -47,6 +49,7 @@ jobs:
             christmas-preview-cover.jpg
           retention-days: 7
   music-source-check:
+    if: contains(github.event.head_commit.message, '[christmas-audio-check]')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
