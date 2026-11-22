@@ -108,7 +108,7 @@ export async function getChristmasFootage(
           }
           clips.push({
             url: "http://localhost:" + config.port + "/api/tmp/" + path.basename(processed),
-            durationFrames: CLIP_FRAMES,
+            durationFrames: scene === 0 ? CLIP_FRAMES : CLIP_FRAMES - 1,
             stockId: clip.id,
           });
           selectedIds.push(clip.id);
