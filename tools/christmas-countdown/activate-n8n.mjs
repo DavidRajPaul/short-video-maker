@@ -80,6 +80,15 @@ if(!isChildPublished){
   throw Error("Christmas child published without all three guarded publishers");
  console.log("Christmas child already published and verified");
 }
+// Idempotent maintenance: a published parent remains untouched on later runs.
+if(original.nodes.some(n=>n.name==="Christmas 2026 Date Gate")){
+ const direct=original.connections?.["Is Afternoon Quote?"]?.main?.[0]?.[0]?.node;
+ const existing=exactNode(original.nodes,"Run Christmas Video Instead of Quote");
+ if(direct!=="Christmas 2026 Date Gate"||existing.parameters?.workflowId?.value!==STAGING)
+  throw Error("Unexpected prior Christmas activation; refuse to guess");
+ console.log(JSON.stringify({alreadyPublished:true,parent:ORIGINAL,child:STAGING,restoresQuotesOn:"2026-12-27"}));
+ process.exit(0);
+}
 // Parent is changed separately; so a failed preview can never interrupt quotes.
 const parentNodes=structuredClone(original.nodes),parentEdges=structuredClone(original.connections);
 const ifQuote=exactNode(parentNodes,"Is Afternoon Quote?");
