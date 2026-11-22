@@ -27,3 +27,22 @@ jobs:
         env:
           N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
           APPLY_STAGE: "true"
+  production-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render Nov 22 Christmas preview (does not publish)
+        run: node tools/christmas-countdown/test-renderer-preview.mjs
+      - name: Require MP4 audio stream
+        run: |
+          ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=noprint_wrappers=1 christmas-preview-2026-11-22.mp4 | grep -Eq 'codec_name=(aac|mp3|opus)'
+          ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1 christmas-preview-2026-11-22.mp4
+      - name: Upload private-review video artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: christmas-preview
+          path: |
+            christmas-preview-2026-11-22.mp4
+            christmas-preview-cover.jpg
+          retention-days: 7
