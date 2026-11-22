@@ -155,16 +155,29 @@ export class PexelsAPI {
     6287707,  // Christmas lights + ornaments
     10334428, // closeup of flashing Christmas lights
   ];
+  // Verified Pexels editorial pages: outdoor houses and streets with
+  // snow AND Christmas decorations; API duration/orientation is checked live.
+  private readonly knownSnowyOutdoorChristmasVideos = [
+    6276334, // snow-covered home decorated for Christmas Eve (vertical)
+    4076196, // snowy outdoor house covered in Christmas lights
+    3955643, // outdoor Christmas lights on a house
+    4076197, // snowy street and illuminated house
+    4076115, // decorated snowy residential street
+    6276324, // snowy home with Christmas decorations
+  ];
 
   async findKnownChristmasVideo(
     minSeconds: number,
     excludeIds: string[],
     ordinal = 0,
+    theme: "general" | "snowy-outdoor" = "general",
   ): Promise<Video> {
     if (!this.API_KEY) throw new Error("Pexels API key missing");
+    const pool=theme==="snowy-outdoor"?this.knownSnowyOutdoorChristmasVideos:this.knownChristmasVideos;
+    const rotation=((ordinal % pool.length)+pool.length)%pool.length;
     const candidates = [
-      ...this.knownChristmasVideos.slice(ordinal % this.knownChristmasVideos.length),
-      ...this.knownChristmasVideos.slice(0,ordinal % this.knownChristmasVideos.length),
+      ...pool.slice(rotation),
+      ...pool.slice(0,rotation),
     ];
     for (const id of candidates) {
       if (excludeIds.includes(String(id))) continue;
@@ -178,9 +191,11 @@ export class PexelsAPI {
           video_files:{ quality:string; width:number; height:number; link:string }[];
         };
         if(entry.duration < minSeconds + 0.5 || !Array.isArray(entry.video_files))continue;
+        const portrait=(f:typeof entry.video_files[number])=>f.width>=720&&f.height>=1280&&f.height>f.width&&f.height<=2560;
+        const landscape=(f:typeof entry.video_files[number])=>f.width>=1280&&f.height>=720&&f.width>f.height;
         const files=entry.video_files.filter(f=>f.quality==="hd"&&f.link?.startsWith("https://")&&
-          f.width>=720&&f.height>=1280&&f.height>f.width&&f.height<=2560
-        ).sort((a,b)=>b.width*b.height-a.width*a.height);
+          (portrait(f)||(theme==="snowy-outdoor"&&landscape(f)))
+        ).sort((a,b)=>Number(portrait(b))-Number(portrait(a))||b.width*b.height-a.width*a.height);
         if(files.length){
           const file=files[0];
           return {id:String(id),url:file.link,width:file.width,height:file.height};
