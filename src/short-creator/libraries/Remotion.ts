@@ -9,6 +9,7 @@ import { shortVideoSchema } from "../../components/utils";
 import { logger } from "../../logger";
 import { OrientationEnum } from "../../types/shorts";
 import { getOrientationConfig } from "../../components/utils";
+import type { ChristmasVideoProps } from "../../components/videos/ChristmasCountdownVideo";
 
 export class Remotion {
   constructor(
@@ -74,6 +75,41 @@ export class Remotion {
       },
       "Video rendered with Remotion",
     );
+  }
+
+  /** A separate composition avoids running Kokoro/Whisper for music-only shorts. */
+  async renderChristmas(data: ChristmasVideoProps, id: string): Promise<void> {
+    const composition = await selectComposition({
+      serveUrl: this.bundled,
+      id: "ChristmasCountdownVideo",
+      inputProps: data,
+    });
+    const outputLocation = path.join(this.config.videosDirPath, id + ".mp4");
+    try {
+      await renderStill({
+        composition,
+        serveUrl: this.bundled,
+        inputProps: data,
+        frame: 100,
+        imageFormat: "jpeg",
+        output: path.join(this.config.videosDirPath, id + ".jpg"),
+      });
+      await renderMedia({
+        codec: "h264",
+        composition,
+        serveUrl: this.bundled,
+        inputProps: data,
+        outputLocation,
+        concurrency: this.config.concurrency,
+        offthreadVideoCacheSizeInBytes: this.config.videoCacheSizeInBytes,
+      });
+      logger.info({ id }, "Christmas countdown video rendered");
+    } catch(error) {
+      const fs = await import("fs-extra");
+      fs.removeSync(outputLocation);
+      fs.removeSync(path.join(this.config.videosDirPath, id + ".jpg"));
+      throw error;
+    }
   }
 
   async testRender(outputLocation: string) {
