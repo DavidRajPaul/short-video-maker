@@ -54,11 +54,25 @@ export async function ensureChristmasMusic(config: Config, card: ChristmasCard) 
   const localName = "christmas-" + track.key + "." + track.extension;
   const destination = path.join(config.tempDirPath, localName);
   if (!(await fs.pathExists(destination)) || (await fs.stat(destination)).size < 50000) {
-    // This Wikimedia URL redirects to the specific source recording, not a search
-    // result or current commercial recording. The allow-list is entirely static.
-    const url = "https://commons.wikimedia.org/wiki/Special:Redirect/file/" + encodeURIComponent(track.filename);
-    const response = await fetch(url, { signal: AbortSignal.timeout(30000), redirect: "follow" });
-    if (!response.ok) throw new Error("Christmas music unavailable: " + track.key + " (HTTP " + response.status + ")");
+    // Wikimedia's static hashed file endpoints avoid per-request Commons redirect
+    // limits. The URL is derived from a fixed, curated allow-list, never input.
+    const { createHash } = await import("node:crypto");
+    const normalized = track.filename.replace(/ /g, "_");
+    const digest = createHash("md5").update(normalized).digest("hex");
+    const url = "https://upload.wikimedia.org/wikipedia/commons/" + digest[0] + "/" + digest.slice(0, 2) + "/" + encodeURIComponent(normalized).replace(/%2F/g, "/");
+    let response: Response | undefined;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      response = await fetch(url, {
+        signal: AbortSignal.timeout(30000),
+        headers: { "User-Agent": "GraceInAMinuteChristmasRenderer/1.0 (source Wikimedia Commons)" },
+      });
+      if (response.ok) break;
+      if (![429, 502, 503, 504].includes(response.status) || attempt === 3) {
+        throw new Error("Christmas music unavailable: " + track.key + " (HTTP " + response.status + ")");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1200 * Math.pow(2, attempt)));
+    }
+    if (!response?.ok) throw new Error("Christmas music unavailable: " + track.key);
     const length = Number(response.headers.get("content-length") || 0);
     if (length > 15000000) throw new Error("Christmas music too large");
     const bytes = Buffer.from(await response.arrayBuffer());
