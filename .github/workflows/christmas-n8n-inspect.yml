@@ -46,3 +46,9 @@ jobs:
             christmas-preview-2026-11-22.mp4
             christmas-preview-cover.jpg
           retention-days: 7
+  music-source-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: node tools/christmas-countdown/check-alternative-audio.mjs
