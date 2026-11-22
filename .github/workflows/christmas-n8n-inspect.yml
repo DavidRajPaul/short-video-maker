@@ -1,0 +1,14 @@
+name: Christmas n8n integration inspection
+on:
+  push:
+    branches: [feature/christmas-n8n-integration]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect scrubbed active n8n quiz contract only
+        run: node tools/christmas-countdown/inspect-quiz-contract.mjs
+        env:
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
