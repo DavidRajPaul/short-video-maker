@@ -20,6 +20,7 @@ const safeLabels = [
   "a Christmas tree decorated with string lights and ornaments",
   "festive Christmas wreaths, presents and glowing ornaments",
   "Christmas market decorations and colorful holiday lights",
+  "an outdoor house covered with snow and glowing Christmas lights",
   "a Christian church interior, stained glass window, or cross",
 ];
 const unsafeLabels = ["nudity or sexual imagery", "suggestive posing or revealing underwear", "blood, injury or graphic violence", "hate symbols or extremist propaganda", "drug abuse or weapons", "disturbing or frightening imagery", "a brand advertisement or prominent commercial logo"];
@@ -60,6 +61,46 @@ const christmasLabels = [
   "a glowing Christmas nativity scene with figures and warm lights",
   "a festive Santa Claus decoration with Christmas presents",
 ];
+const snowyChristmasOutdoorLabels = [
+  "a snowy house exterior decorated with colorful Christmas string lights and wreaths",
+  "a snow-covered street with illuminated Christmas trees and holiday decorations",
+  "an outdoor Christmas market in falling snow filled with warm festive lights",
+  "a garden covered with snow and decorated with Christmas lights",
+  "a Christmas village at night with snow and glowing Christmas decorations",
+  "a snow-covered house entrance with Christmas garlands and wreaths",
+];
+const nonSnowyChristmasOutdoorLabels = [
+  "an ordinary snow-covered street with no Christmas lights or decorations",
+  "an ordinary decorated Christmas tree in a warm indoor living room",
+  "a snowy mountain, field or forest without any holiday decorations",
+  "an outdoor summer Christmas celebration without snow",
+  "a generic fantasy snow animation with no real buildings or decorations",
+  "a normal outdoor house with lights but no snow",
+];
+export function approvedSnowyOutdoorChristmasClassification(scores: {label:string;score:number}[]) {
+  const score=scores.filter(x=>snowyChristmasOutdoorLabels.includes(x.label)).reduce((sum,x)=>sum+x.score,0);
+  return {approved:snowyChristmasOutdoorLabels.includes(scores[0]?.label) && score>=0.44, score, topLabel:scores[0]?.label};
+}
+/** Optional priority scene only: rejects non-snowy footage without blocking other Christmas videos. */
+export async function screenSnowyOutdoorChristmasFootage(file:string):Promise<boolean>{
+  const dir=await mkdtemp(path.join(tmpdir(),"grace-outdoor-snow-"));
+  try{
+    const frame=path.join(dir,"snowy-exterior.jpg");
+    await runMedia("ffmpeg",["-y","-loglevel","error","-ss","3","-i",file,
+      "-frames:v","1","-vf","scale=256:256:force_original_aspect_ratio=decrease",frame],{timeout:30000});
+    classifier ??= loadClassifier().catch(error=>{classifier=undefined;throw error;});
+    const classify=await classifier;
+    const scores=await classify(frame,[...snowyChristmasOutdoorLabels,...nonSnowyChristmasOutdoorLabels]) as {label:string;score:number}[];
+    const approved=approvedSnowyOutdoorChristmasClassification(scores);
+    if(!approved.approved)logger.info({snowScore:Number(approved.score.toFixed(3)),topLabel:approved.topLabel},
+      "Christmas candidate is not clearly an outdoor snowy decoration scene");
+    return approved.approved;
+  }catch(error){
+    logger.warn({reason:error instanceof Error?error.message.slice(0,150):"unknown"},"Snowy outdoor Christmas screening unavailable");
+    return false;
+  }finally{await rm(dir,{recursive:true,force:true});}
+}
+
 const nonChristmasLabels = [
   "a village with plain rooftops under a cloudy sky",
   "a natural sunset over mountains and fields with no holiday decorations",
