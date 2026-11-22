@@ -27,3 +27,16 @@ console.log(JSON.stringify({
   scheduleNodes:scheduleNodes.map(n=>({name:n.name,type:n.type})),
   connections,
 }, null, 2));
+
+const quizRes = await fetch(base + "/workflows/nB10Ub0ZIxCe5gHI", {
+  headers: { "X-N8N-API-KEY": token }, signal: AbortSignal.timeout(25000),
+});
+if (!quizRes.ok) throw new Error("Quiz workflow inspection HTTP " + quizRes.status);
+const quiz = await quizRes.json();
+const links = Object.entries(quiz.connections || {}).flatMap(([source, o]) =>
+  (o.main || []).flatMap((edges,i) => (edges || []).map(e => ({from:source,branch:i,to:e.node}))));
+const summary = quiz.nodes.map(n => ({
+  name:n.name,type:n.type,disabled:!!n.disabled,position:n.position,
+  configKeys: Object.keys(n.parameters || {}),
+})).filter(n => !/settings|config|credentials|token/i.test(n.name));
+console.log("QUIZ_TOPOLOGY=" + JSON.stringify({active:quiz.active,nodeCount:quiz.nodes.length,nodes:summary,links}));
