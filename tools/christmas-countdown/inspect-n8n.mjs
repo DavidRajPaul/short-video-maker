@@ -40,3 +40,13 @@ const summary = quiz.nodes.map(n => ({
   configKeys: Object.keys(n.parameters || {}),
 })).filter(n => !/settings|config|credentials|token/i.test(n.name));
 console.log("QUIZ_TOPOLOGY=" + JSON.stringify({active:quiz.active,nodeCount:quiz.nodes.length,nodes:summary,links}));
+
+const wanted = /PRIVATE Quiz Video|Store PRIVATE Render|Quiz Check Railway|Quiz Render Ready|Quiz Abort|Quiz Archive|Quiz Verify Permanent|Prepare .* Public Quiz Input|Publish Quiz to /;
+const parameterUsage = quiz.nodes.filter(n => wanted.test(n.name)).map(n => {
+  const p = JSON.stringify(n.parameters || {});
+  const refs = [...p.matchAll(/\\$\\(['"]([^'"]+)['"]\\)/g)].map(x => x[1]);
+  const fieldRefs = [...p.matchAll(/\\$json\\.([A-Za-z_][A-Za-z_0-9]*)/g)].map(x => x[1]);
+  return { name: n.name, refs:[...new Set(refs)], fieldRefs:[...new Set(fieldRefs)],
+    mentionsVideoId:p.includes("videoId"), mentionsImageKit:p.includes("imagekit"), mentionsPuzzle:p.includes("puzzle") };
+});
+console.log("QUIZ_DEPENDENCIES=" + JSON.stringify(parameterUsage));
