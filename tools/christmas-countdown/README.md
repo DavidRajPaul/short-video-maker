@@ -46,3 +46,18 @@ All steps must be verified before calling the production flow live.
 **One-off launch:** a guarded one-time webhook runs only on Nov 22, with authentication derived from the secret held in GitHub Actions, and publishes the seasonal content only once per platform using the shared publisher's claim ledger. Publication is not confirmed until the per-platform receipt is verified. Never blindly retry an uncertain public post.
 
 **Previous private test:** https://github.com/DavidRajPaul/short-video-maker/actions/runs/45008332028 (passed, actual Christmas tree and gifts footage with audible music).
+
+## Seasonal visual variety — snowy outdoor Christmas scenes
+
+Two **moving real-world** Christmas stock clips are fetched via Pexels/Pixabay for each 13-second video. Existing search groups cover decorated trees, holiday lights, markets, wrapped gifts, candles and nativity scenes.
+
+Starting November 23, every third day the second clip prioritizes **snow-covered houses with Christmas lights, snowy decorated streets, outdoor Christmas markets and illuminated winter village decorations**. On some additional days the first clip can be an outdoor snowy scene. Curated backup Pexels editorial sources include:
+
+- https://www.pexels.com/video/beautiful-home-decorated-on-christmas-eve-6276334/
+- https://www.pexels.com/video/a-house-well-decorated-with-christmas-lights-4076196/
+- https://www.pexels.com/video/house-covered-with-christmas-lights-3955643/
+- https://www.pexels.com/video/a-house-across-the-street-decorated-with-lights-on-a-winter-night-4076197/
+
+Source API, playable resolution, clip safety, actual Christmas decorations AND visibly snowy outdoors are checked before using an outdoor clip. If none meet those requirements, the seasonal renderer uses a different verified Christmas clip instead; it will not fake snowfall or present generic winter scenery as Christmas.
+
+**Avoiding repeats:** selected stock IDs are excluded by the renderer's recent-clip history across daily executions. The curated Pexels list additionally rotates by date/scene so deployments do not reset its selection to the same first clip. The Railway service currently has **no persistent volume**, so video-history records may reset after a deployment; absolutely zero repeats cannot be guaranteed without durable storage. No new paid storage is introduced by this change.
