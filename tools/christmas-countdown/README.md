@@ -34,3 +34,15 @@ On first render the server downloads the selected Kevin MacLeod official recordi
 7. Check FB/IG/YT public posting receipts rather than assuming renderer success means publication.
 
 All steps must be verified before calling the production flow live.
+
+## Verified 2026 Christmas live rollout (Nov 22)
+
+**Production:** the original 3-slot workflow `TCMiKoaj2xkNvK1L` routes only its afternoon quote output through `Christmas 2026 Date Gate`. True during 2026-11-22 to 2026-12-26 (Asia/Kolkata), it calls internal Christmas child `lw6IvbrIW71nU1nO` with no independent schedule, which renders moving Christmas footage, archives to ImageKit and calls shared publisher `UyXSFUjWdkjuqK1p` independently for YouTube, Facebook and Instagram. Outside this period it falls back to the original quote path, including Dec 27 onwards. No morning/evening/quiz nodes were changed.
+
+**Visuals:** two moving 6.5-second clips from Pexels/Pixabay, chosen using seasonal search terms, source URL/tag relevance and actual video-frame Christmas-classification checks; curated verified festive Pexels video IDs are available as fallback. Generic winter towns/sunsets are rejected. Only elegant glowing gold text with letter-clipped glitter and a small channel watermark overlay the footage. No synthetic tree/snow decorations.
+
+**Music:** confirmed licensed Kevin MacLeod instrumental tracks downloaded from the official site: `Deck the Halls B`, `Jingle Bells`, `Silent Night` (CC BY 4.0, attribution must be in every platform description). No copyrighted film soundtrack.
+
+**One-off launch:** a guarded one-time webhook runs only on Nov 22, with authentication derived from the secret held in GitHub Actions, and publishes the seasonal content only once per platform using the shared publisher's claim ledger. Publication is not confirmed until the per-platform receipt is verified. Never blindly retry an uncertain public post.
+
+**Previous private test:** https://github.com/DavidRajPaul/short-video-maker/actions/runs/45008332028 (passed, actual Christmas tree and gifts footage with audible music).
