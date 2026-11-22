@@ -12,3 +12,18 @@ jobs:
         run: node tools/christmas-countdown/inspect-quiz-contract.mjs
         env:
           N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+  stage-inactive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: node --check tools/christmas-countdown/stage-n8n.mjs
+      - name: Validate staged workflow contract without changes
+        run: node tools/christmas-countdown/stage-n8n.mjs
+        env:
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+      - name: Create inactive Christmas staging workflow only
+        run: node tools/christmas-countdown/stage-n8n.mjs
+        env:
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+          APPLY_STAGE: "true"
