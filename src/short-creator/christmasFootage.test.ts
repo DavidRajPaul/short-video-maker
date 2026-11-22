@@ -5,7 +5,7 @@ import { christmasSceneTheme } from "./christmasFootage";
 describe("Christmas stock relevance (not merely generic snow scenery)",()=>{
   it("accepts clearly decorated Christmas imagery",()=>{
     const scores=[
-      {label:"a Christmas tree decorated with sparkling fairy lights and colorful ornaments",score:0.69},
+      {label:"a decorated Christmas tree with sparkling fairy lights and colorful ornaments",score:0.69},
       {label:"a village with plain rooftops under a cloudy sky",score:0.12},
       {label:"a festive Santa Claus decoration with Christmas presents",score:0.11},
       {label:"a natural sunset over mountains and fields with no holiday decorations",score:0.08},
