@@ -112,10 +112,11 @@ export async function getChristmasFootage(
           // Other days search Pexels/Pixabay by terms, with curated fallback.
           const requireSnowyOutdoor = snowyOutdoor && attempt < SNOWY_OUTDOOR_SEARCH_GROUPS.length;
           const useCurated = (card.date === "2026-11-22" && attempt === 0)
-            || (snowyOutdoor && attempt === 1)
+            || (snowyOutdoor && (attempt === 1 || attempt === 2))
             || attempt === groups.length - 1;
           const clip = useCurated
-            ? await pexels.findKnownChristmasVideo(CLIP_SECONDS, [...excluded], offset * 2 + scene,
+            ? await pexels.findKnownChristmasVideo(CLIP_SECONDS, [...excluded],
+                offset * 2 + scene + (requireSnowyOutdoor ? Math.max(0, attempt - 1) : 0),
                 requireSnowyOutdoor ? "snowy-outdoor" : "general")
             : await pexels.findChristmasVideo(
                 group.terms,
