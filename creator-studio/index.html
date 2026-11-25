@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Grace In A Minute · Creator Studio</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#11100e;color:#f5efe3;font:16px/1.5 system-ui,sans-serif}main{max-width:740px;margin:auto;padding:24px 18px 48px}header{margin-bottom:24px}h1{font-size:clamp(25px,6vw,38px);line-height:1.15;margin:8px 0}h2{font-size:19px;margin:0 0 12px}.muted{color:#bdb5a8;font-size:14px}.eyebrow{color:#e7bd68;font-weight:700;letter-spacing:.12em;font-size:12px}.panel{background:#211e19;border:1px solid #3b3428;border-radius:18px;padding:18px;margin:16px 0}label{display:block;font-weight:600;margin:14px 0 6px}input,textarea,button{font:inherit}input[type=text],textarea{width:100%;border:1px solid #655846;border-radius:10px;background:#171510;color:#fff;padding:12px}textarea{resize:vertical;min-height:100px}input[type=file]{width:100%;color:#eee}video{display:block;width:100%;max-height:400px;background:#080706;border-radius:12px;margin-top:14px}video[hidden]{display:none}button{border:0;border-radius:12px;padding:12px 16px;background:#e7bd68;color:#211a0d;font-weight:700;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.choice{display:flex;align-items:center;gap:8px;margin:8px 0;min-height:36px}.choice input{width:20px;height:20px;accent-color:#e7bd68}.wide{width:100%}.status{padding:12px;background:#171510;border-radius:10px;white-space:pre-wrap;overflow-wrap:anywhere}.pill{border:1px solid #76623e;border-radius:99px;padding:4px 10px;color:#f6ce79;font-size:12px}a{color:#e7bd68}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #f5d28b;outline-offset:2px}
+</style>
+</head>
+<body><main>
+<header><span class="eyebrow">GRACE IN A MINUTE</span><h1>Creator Studio</h1><p class="muted">Create with care. Share hope everywhere.</p><span class="pill">Local preview · No live publishing</span></header>
+<section class="panel"><h2>1. Choose your video</h2><label for="videoFile">Video from your phone</label><input id="videoFile" type="file" accept="video/mp4,video/quicktime,video/webm"><video id="preview" controls playsinline hidden></video><p class="muted" id="fileInfo" role="status">No video selected.</p><label class="choice"><input type="checkbox" id="brand" checked>Add Grace In A Minute logo (processing preference)</label><p class="muted">Existing attribution and provenance must remain visible. The local preview is the original video, not a branded render.</p></section>
+<section class="panel"><h2>2. Make it yours</h2><p class="muted">Enter your own text now. Automatic AI suggestions will require the secure processing service.</p><button id="ai" disabled>Generate with AI · Not connected</button><label for="title">Title</label><input id="title" type="text" maxlength="100" placeholder="A hopeful, engaging title"><p class="muted" id="count">0 / 100 characters</p><label for="description">Caption / description</label><textarea id="description" maxlength="2200" placeholder="Tell the story behind this video"></textarea><label for="tags">Hashtags</label><input id="tags" type="text" maxlength="400" placeholder="#GraceInAMinute #Faith #Hope"></section>
+<section class="panel"><h2>3. Choose platforms</h2><label class="choice"><input type="checkbox" name="platform" value="youtube" checked>YouTube Shorts</label><label class="choice"><input type="checkbox" name="platform" value="facebook" checked>Facebook Reels</label><label class="choice"><input type="checkbox" name="platform" value="instagram" checked>Instagram Reels</label><button class="wide" id="review" disabled>Review publishing request</button><p class="muted">Review only. No video or metadata leaves this browser.</p><div id="result" class="status" role="status" hidden></div><button class="wide" disabled style="margin-top:12px">Publish · Not connected</button></section>
+</main><script type="module">
+const $=id=>document.getElementById(id);
+let video=null, url=null;
+const fields=['title','description','tags'];
+function selected(){return [...document.querySelectorAll('input[name=platform]:checked')].map(x=>x.value)}
+function update(){ $('count').textContent=$('title').value.length+' / 100 characters'; $('review').disabled=!(video&&$('title').value.trim()&&$('description').value.trim()&&selected().length); $('result').hidden=true; }
+$('videoFile').addEventListener('change',()=>{
+ if(url)URL.revokeObjectURL(url);url=null;video=null;$('preview').removeAttribute('src');$('preview').load();$('preview').hidden=true;
+ const f=$('videoFile').files[0]; if(!f){$('fileInfo').textContent='No video selected.';update();return}
+ if(!['video/mp4','video/quicktime','video/webm'].includes(f.type)&&!(f.type===''&&/\.(mp4|mov|webm)$/i.test(f.name))){$('fileInfo').textContent='Choose an MP4, MOV or WebM video.';update();return}
+ if(f.size===0||f.size>100*1024*1024){$('fileInfo').textContent='Choose a nonempty video up to 100 MB.';update();return}
+ video=f;url=URL.createObjectURL(f);$('preview').src=url;$('preview').hidden=false;$('fileInfo').textContent=f.name+' · '+(f.size/1024/1024).toFixed(1)+' MB';update();
+});
+$('preview').addEventListener('loadedmetadata',()=>{if(video)$('fileInfo').textContent=video.name+' · '+($('preview').duration||0).toFixed(1)+' sec · '+$('preview').videoWidth+' × '+$('preview').videoHeight;});
+$('preview').addEventListener('error',()=>{if(video){$('fileInfo').textContent='This video cannot be previewed. Try an H.264 MP4.';video=null;update()}});
+for(const id of fields)$ (id).addEventListener('input',update);
+document.querySelectorAll('input[type=checkbox]').forEach(x=>x.addEventListener('change',update));
+$('review').addEventListener('click',()=>{if($('review').disabled)return;const tags=[...new Set($('tags').value.split(/[\s,]+/).map(x=>x.replace(/^#+/, '')).filter(Boolean))];$('result').textContent='LOCAL REVIEW — nothing published\n\nTitle: '+$('title').value.trim()+'\nCaption: '+$('description').value.trim()+'\nHashtags: '+tags.map(x=>'#'+x).join(' ')+'\nPlatforms: '+selected().join(', ')+'\nBranding: '+($('brand').checked?'Requested':'Not requested');$('result').hidden=false;});
+window.addEventListener('pagehide',()=>{if(url)URL.revokeObjectURL(url)});
+</script></body></html>
