@@ -10,9 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Resize existing channel logo for small video overlay
         run: |
-          ffmpeg -v error -y -i public/grace-logo.jpg -vf scale=52:52 -q:v 7 /tmp/grace-logo-small.jpg
+          python -m pip install --quiet pillow
+          python -c "from PIL import Image; Image.open('public/grace-logo.jpg').convert('RGB').resize((52,52),Image.Resampling.LANCZOS).save('/tmp/grace-logo-small.jpg',quality=83)"
           echo LOGO_BASE64_START
           base64 -w0 /tmp/grace-logo-small.jpg
           echo
