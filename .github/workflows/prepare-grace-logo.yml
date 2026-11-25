@@ -1,23 +1,32 @@
-name: Prepare Grace logo for video branding
+name: Manual publisher connectivity audit
 on:
   pull_request:
     branches: [main]
 permissions:
   contents: read
 jobs:
-  logo:
+  audit:
     if: github.head_ref == 'ops/janet-comfort-video-20261125'
     runs-on: ubuntu-latest
+    timeout-minutes: 4
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Resize existing channel logo for small video overlay
+      - name: Inspect existing media and Drive integrations
+        env:
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
         run: |
-          python -m pip install --quiet pillow
-          python -c "from PIL import Image; Image.open('public/grace-logo.jpg').convert('RGB').resize((52,52),Image.Resampling.LANCZOS).save('/tmp/grace-logo-small.jpg',quality=83)"
-          echo LOGO_BASE64_START
-          base64 -w0 /tmp/grace-logo-small.jpg
-          echo
-          echo LOGO_BASE64_END
+          node --input-type=module <<'NODE'
+          const key=process.env.N8N_API_KEY;
+          const root='https://meetdavidraj7.n8n-wsk.com/api/v1';
+          async function get(p){
+            const r=await fetch(root+p,{headers:{'X-N8N-API-KEY':key},signal:AbortSignal.timeout(20000)});
+            if(!r.ok)throw Error('n8n HTTP '+r.status);
+            return r.json();
+          }
+          const w=(await get('/workflows?limit=100')).data||[];
+          for(const x of w){
+            if(!x.active && !/grace|drive|manual/i.test(x.name))continue;
+            const d=await get('/workflows/'+x.id);
+            const nodes=(d.nodes||[]).filter(n=>/googleDrive|gmail|cloudinary|imagekit|archive|media upload/i.test(n.name+' '+n.type+' '+Object.keys(n.credentials||{}).join(' '))).map(n=>({name:n.name,type:n.type,credentials:Object.keys(n.credentials||{})}));
+            if(nodes.length)console.log(JSON.stringify({workflow:x.name,id:x.id,active:x.active,nodes}));
+          }
+          NODE
