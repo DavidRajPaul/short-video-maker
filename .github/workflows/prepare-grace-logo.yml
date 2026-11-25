@@ -1,0 +1,19 @@
+name: Prepare Grace logo for video branding
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  logo:
+    if: github.head_ref == 'ops/janet-comfort-video-20261125'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resize existing channel logo for small video overlay
+        run: |
+          ffmpeg -v error -y -i public/grace-logo.jpg -vf scale=52:52 -q:v 7 /tmp/grace-logo-small.jpg
+          echo LOGO_BASE64_START
+          base64 -w0 /tmp/grace-logo-small.jpg
+          echo
+          echo LOGO_BASE64_END
