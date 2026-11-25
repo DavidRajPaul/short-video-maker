@@ -1,0 +1,39 @@
+name: Nov 25 publishing recovery audit
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: github.head_ref == 'ops/nov25-publishing-recovery'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Read-only n8n execution audit
+        env:
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const key=process.env.N8N_API_KEY;
+          if(!key)throw Error('n8n API secret unavailable');
+          const root='https://meetdavidraj7.n8n-wsk.com/api/v1';
+          async function get(p){
+            const r=await fetch(root+p,{headers:{'X-N8N-API-KEY':key},signal:AbortSignal.timeout(20000)});
+            if(!r.ok)throw Error('n8n API HTTP '+r.status);
+            return r.json();
+          }
+          const since=Date.parse('2026-11-25T00:00:00+05:30'),until=Date.parse('2026-11-26T00:00:00+05:30');
+          const ids={christmas:'lw6IvbrIW71nU1nO',quiz:'nB10Ub0ZIxCe5gHI',parent:'TCMiKoaj2xkNvK1L',publisher:'UyXSFUjWdkjuqK1p'};
+          for(const [name,id] of Object.entries(ids)){
+            const l=await get('/executions?workflowId='+id+'&limit=50');
+            for(const e of (l.data||[]).filter(e=>Date.parse(e.startedAt)>=since&&Date.parse(e.startedAt)<until)){
+              const d=await get('/executions/'+e.id+'?includeData=true');
+              const rd=d.data?.resultData||{}, nodes=rd.runData||{};
+              const errors=Object.entries(nodes).flatMap(([n,rs])=>rs.filter(r=>r.error).map(r=>({node:n,type:r.error.name||'error',http:r.error.httpCode||null})));
+              const receipts=Object.entries(nodes).filter(([n])=>/Record .*Delivery Result|Return .*Result/i.test(n)).map(([node,rs])=>{const j=rs.at(-1)?.data?.main?.[0]?.[0]?.json||{};return {node,status:['published','failed','skipped','unknown','blocked','pending','already_published'].includes(j.status)?j.status:'unknown',hasRemoteId:!!j.remoteId}});
+              console.log(JSON.stringify({workflow:name,id:e.id,startedAt:e.startedAt,status:e.status,lastNode:rd.lastNodeExecuted||null,errorNode:rd.error?.node?.name||null,errorType:rd.error?.name||null,errors,receipts,executedNodes:Object.keys(nodes)}));
+            }
+          }
+          NODE
