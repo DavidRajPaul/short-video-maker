@@ -1,0 +1,39 @@
+name: Nov 25 evening verse read-only diagnosis
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: github.head_ref == 'ops/nov25-evening-verse-audit'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Diagnose script generation and inspect scheduled workflow topology
+        env:
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+        run: |
+          node --input-type=module <<'NODE'
+          const key=process.env.N8N_API_KEY;
+          if(!key)throw Error('n8n API secret unavailable');
+          const root='https://meetdavidraj7.n8n-wsk.com/api/v1';
+          async function get(path){
+            const r=await fetch(root+path,{headers:{'X-N8N-API-KEY':key},signal:AbortSignal.timeout(20000)});
+            if(!r.ok)throw Error('Read-only n8n API HTTP '+r.status);
+            return r.json();
+          }
+          const d=await get('/executions/2207?includeData=true');
+          const rd=d.data?.resultData||{},rs=rd.runData||{};
+          const e=rd.error||{},re=rs['Gemini Generate Script']?.at(-1)?.error||{};
+          const raw=JSON.stringify([e,re]);
+          const patterns={rateLimit:/rate.limit|resource.exhausted|too many requests/i,quota:/quota|billing|free.tier/i,auth:/unauthenticated|permission.denied|invalid.api.key|credential|unauthorized/i,model:/model.*not found|not supported|model.*deprecated/i,invalidInput:/invalid.argument|bad request|invalid request|malformed/i,unavailable:/unavailable|overloaded|service unavailable|internal server error/i,timeout:/timed.out|timeout|deadline.exceeded/i,safety:/safety.block|blocked.*safety|content.filter/i};
+          const codes=[...new Set([...raw.matchAll(/"(?:httpCode|statusCode|code|status)"\s*:\s*"?(400|401|403|404|408|429|500|502|503|504)\b/g)].map(m=>m[1]))];
+          console.log(JSON.stringify({execution:d.id,workflowId:d.workflowId,status:d.status,lastNode:rd.lastNodeExecuted,codes,categories:Object.keys(patterns).filter(k=>patterns[k].test(raw)),errorName:e.name||re.name||null,hasProviderMessage:!!(e.message||re.message),renderStarted:!!rs['Short Video Create']}));
+          if(!d.workflowId)throw Error('Parent workflow ID not provided');
+          for(const [role,id] of [['parent',d.workflowId],['christmas','lw6IvbrIW71nU1nO'],['quiz','nB10Ub0ZIxCe5gHI'],['publisher','UyXSFUjWdkjuqK1p']]){
+            const w=await get('/workflows/'+id);
+            const relevant=w.nodes.filter(n=>/scheduleTrigger|errorTrigger/.test(n.type)||/Gemini Generate Script|Verify Permanent MP4 URL|Normalize Actual Platform Outcome|Return Per-Platform Publish Receipt/.test(n.name));
+            console.log(JSON.stringify({role,id:w.id,active:w.active??null,timezone:w.settings?.timezone??null,hasErrorWorkflow:!!w.settings?.errorWorkflow,nodes:w.nodes.length,checks:relevant.map(n=>({name:n.name,type:n.type,retryOnFail:n.retryOnFail??false,maxTries:n.maxTries??null,onError:n.onError??null,continueOnFail:n.continueOnFail??false,disabled:n.disabled??false,model:typeof n.parameters?.modelId==='string'&&/^gemini[-\w.]+$/.test(n.parameters.modelId)?n.parameters.modelId:null}))}));
+          }
+          NODE
