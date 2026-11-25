@@ -1,43 +1,111 @@
-name: Nov 25 publishing recovery audit
+name: Nov 25 one-time publishing recovery
 on:
   pull_request:
     branches: [main]
 permissions:
   contents: read
+concurrency:
+  group: grace-nov25-one-time-recovery
+  cancel-in-progress: false
 jobs:
-  audit:
+  recover:
     if: github.head_ref == 'ops/nov25-publishing-recovery'
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 12
     steps:
-      - name: Read delivery receipts and platform rejection details
+      - name: Recover already rendered videos through isolated publisher
         env:
           N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
         run: |
           node --input-type=module <<'NODE'
+          import {randomUUID,randomBytes} from 'node:crypto';
           const key=process.env.N8N_API_KEY;
           if(!key)throw Error('n8n API secret unavailable');
-          const root='https://meetdavidraj7.n8n-wsk.com/api/v1';
-          async function get(p){
-            const r=await fetch(root+p,{headers:{'X-N8N-API-KEY':key},signal:AbortSignal.timeout(20000)});
-            if(!r.ok)throw Error('n8n API HTTP '+r.status);
-            return r.json();
+          const host='https://meetdavidraj7.n8n-wsk.com', root=host+'/api/v1';
+          const name='TEMP Grace Nov25 2026 authorized recovery v1';
+          const nap=ms=>new Promise(r=>setTimeout(r,ms));
+          async function api(p,method='GET',body){
+            const r=await fetch(root+p,{method,headers:{'X-N8N-API-KEY':key,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(25000)});
+            if(!r.ok)throw Error('n8n API '+method+' HTTP '+r.status);
+            return r.status===204?{}:await r.json();
           }
-          function classify(s){
-            s=String(s||'');
-            return ['invalid_grant','expired','OAuth','access token','permission','unauthorized','forbidden','quota','rate limit','invalid parameter','unsupported','not ready','processing','download','media','video','Unknown response','not confirmed','403','401','400','429','190','2207026'].filter(x=>s.toLowerCase().includes(x.toLowerCase()));
+          if(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())!=='2026-11-25')throw Error('Recovery is restricted to November 25 IST');
+          const items=[['2192','christmas','cmwvt141h000y01o66o4hhrut','publishYouTube'],['2193','christmas','cmwvt141h000y01o66o4hhrut','publishFacebook'],['2194','christmas','cmwvt141h000y01o66o4hhrut','publishInstagram'],['2197','quiz','cmwvzfj5w000z01o6ff9u4ri2','publishYouTube'],['2198','quiz','cmwvzfj5w000z01o6ff9u4ri2','publishFacebook'],['2199','quiz','cmwvzfj5w000z01o6ff9u4ri2','publishInstagram']];
+          const urls=[...new Set(items.map(x=>'https://short-video-maker-production-4274.up.railway.app/api/short-video/'+x[2]))];
+          const available=new Set();
+          for(const url of urls){
+            try{
+              const r=await fetch(url,{signal:AbortSignal.timeout(45000)});
+              const b=new Uint8Array(await r.arrayBuffer());
+              const mp4=b.length>10000&&Buffer.from(b.subarray(4,8)).toString()==='ftyp';
+              console.log(JSON.stringify({media:url.split('/').at(-1),http:r.status,bytes:b.length,mp4}));
+              if(r.ok&&mp4)available.add(url);
+            }catch{console.log('Renderer media request failed');}
           }
-          for(const id of ['2192','2193','2194','2197','2198','2199']){
-            const d=await get('/executions/'+id+'?includeData=true');
+          const inputs=[];
+          for(const [id,slot,video,mode] of items){
+            const url='https://short-video-maker-production-4274.up.railway.app/api/short-video/'+video;
+            if(!available.has(url))continue;
+            const d=await api('/executions/'+id+'?includeData=true');
             const nodes=d.data?.resultData?.runData||{};
             const out=n=>nodes[n]?.at(-1)?.data?.main?.[0]?.[0]?.json||{};
-            const receipt=out('Normalize Actual Platform Outcome').publicResult||{};
-            const detail=[];
-            for(const n of ['Public YouTube Download ImageKit MP4','Public YouTube Upload','FB Reel Start Upload','FB Reel Upload Binary','FB Reel Finish Upload','Facebook Finish Uncertain','IG Create Container','IG Check Status','IG Normalize Status','Instagram Processing Uncertain']){
-              if(!nodes[n])continue;
-              const j=out(n),e=j.error||{};
-              detail.push({node:n,keys:Object.keys(j),codes:[e.code,e.error_subcode,e.httpCode,j.statusCode,j.code].filter(x=>typeof x==='number'||/^\d{3,8}$/.test(String(x))),messageClasses:classify([typeof e==='string'?e:e.message,j.message,j.error_message,j.ig_fail_reason,j.fb_fail_reason].join(' ')),statusCode:typeof j.status_code==='string'&&/^[A-Z_]+$/.test(j.status_code)?j.status_code:null,remoteIdPresent:!!(j.id||j.video_id||j.fb_video_id||j.ig_container_id)});
+            const v=out('Normalize Publishing Input'), old=out('Normalize Actual Platform Outcome').publicResult||{};
+            if(v.mode!==mode||!v.contentId||!v.title||!v.description||old.status!=='uncertain'||old.remoteId)throw Error('Unexpected prior receipt '+id);
+            inputs.push({slot,mode,publisherInput:{contentId:v.contentId.slice(0,85)+'-recovery-20261125',contentType:v.contentType,title:v.title,description:v.description,tags:v.tags,mode,videoUrl:url}});
+          }
+          if(!inputs.length)throw Error('No recoverable media; no posts attempted');
+          const previous=(await api('/workflows?limit=100')).data||[];
+          if(previous.some(w=>w.name===name))throw Error('Existing recovery workflow; do not invoke again');
+          const shared=await api('/workflows/UyXSFUjWdkjuqK1p');
+          if(!shared.activeVersionId||shared.nodes.length!==58)throw Error('Unexpected shared publisher state');
+          const nodes=structuredClone(shared.nodes),connections=structuredClone(shared.connections);
+          const trigger=nodes.find(n=>n.name==='When called by a content slot');
+          const normal=nodes.find(n=>n.name==='Normalize Publishing Input');
+          if(!trigger||!normal||nodes.some(n=>/webhook|scheduleTrigger/.test(n.type)))throw Error('Unexpected trigger');
+          const slug='grace-recover-'+randomUUID(),proof=randomBytes(32).toString('hex');
+          Object.assign(trigger,{type:'n8n-nodes-base.webhook',typeVersion:2.1,webhookId:randomUUID(),parameters:{httpMethod:'POST',path:slug,responseMode:'onReceived',options:{}}});
+          const original=normal.parameters.jsCode;
+          const lines=original.split('\n');
+          const i=lines.findIndex(l=>l.includes('Expected a permanent HTTPS ImageKit MP4'));
+          if(i<0)throw Error('Media guard changed');
+          lines[i]='if(!'+JSON.stringify(urls)+'.includes(url))throw new Error("Recovery URL outside exact allowlist");';
+          const first=lines.findIndex(l=>l.includes('const raw='));
+          if(first<0)throw Error('Input guard changed');
+          lines[first]='const request=$input.first()?.json??{};if(request.headers?.["x-grace-recovery"]!=='+JSON.stringify(proof)+')throw Error("Unauthorized");const idx=Number(request.body?.index);const options='+JSON.stringify(inputs.map(x=>({publisherInput:x.publisherInput})))+';if(!Number.isInteger(idx)||!options[idx])throw Error("Invalid recovery index");const raw=options[idx];';
+          normal.parameters.jsCode=lines.join('\n');
+          // Keep cloned credentials, ledger and platform paths; never modify original.
+          const w=await api('/workflows','POST',{name,nodes,connections,settings:{timezone:'Asia/Kolkata',executionOrder:'v1'}});
+          const id=w.id;
+          console.log(JSON.stringify({temporaryWorkflowId:id,inputs:inputs.map(x=>({slot:x.slot,mode:x.mode}))}));
+          let allTerminal=false;
+          try{
+            await api('/workflows/'+id+'/publish','POST');
+            await nap(4000);
+            const started=Date.now();
+            for(let j=0;j<inputs.length;j++){
+              const r=await fetch(host+'/webhook/'+slug,{method:'POST',headers:{'Content-Type':'application/json','x-grace-recovery':proof},body:JSON.stringify({index:j}),signal:AbortSignal.timeout(25000)});
+              console.log(JSON.stringify({invocation:j,slot:inputs[j].slot,mode:inputs[j].mode,http:r.status}));
+              if(!r.ok)throw Error('Recovery webhook rejected; stop without another attempt');
+              await nap(1200);
             }
-            console.log(JSON.stringify({execution:id,platform:receipt.platform,status:receipt.status,remoteId:/^[A-Za-z0-9_-]{6,32}$/.test(String(receipt.remoteId))?receipt.remoteId:null,errorClasses:classify(receipt.error),detail}));
+            for(let k=0;k<70;k++){
+              await nap(5000);
+              const l=await api('/executions?workflowId='+id+'&limit=20');
+              const list=(l.data||[]).filter(e=>Date.parse(e.startedAt)>=started-2000);
+              if(list.length<inputs.length||list.some(e=>!['success','error','crashed','canceled'].includes(e.status)))continue;
+              allTerminal=true;
+              for(const e of list){
+                const d=await api('/executions/'+e.id+'?includeData=true');
+                const rd=d.data?.resultData||{},n=rd.runData||{};
+                const o=x=>n[x]?.at(-1)?.data?.main?.[0]?.[0]?.json||{};
+                const input=o('Normalize Publishing Input'),receipt=o('Return Per-Platform Publish Receipt');
+                console.log(JSON.stringify({recoveryExecution:e.id,contentType:input.contentType,mode:input.mode,executionStatus:e.status,status:receipt.status||'unconfirmed',remoteId:receipt.remoteId||null,remoteUrl:receipt.remoteUrl||null,lastNode:rd.lastNodeExecuted||null,errorNode:rd.error?.node?.name||null}));
+              }
+              break;
+            }
+            if(!allTerminal)throw Error('Recovery executions not all terminal; inspect before retry');
+          }finally{
+            // Disable external entry point; retain execution history for audit.
+            try{await api('/workflows/'+id+'/unpublish','POST');console.log('Temporary recovery workflow unpublished');}catch{console.log('Temporary unpublish failed; inspect workflow '+id);}
           }
           NODE
