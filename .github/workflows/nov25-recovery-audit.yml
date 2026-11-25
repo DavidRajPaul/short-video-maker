@@ -10,10 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
-      - name: Read-only n8n execution audit
+      - name: Read delivery receipts and platform rejection details
         env:
           N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
-        shell: bash
         run: |
           node --input-type=module <<'NODE'
           const key=process.env.N8N_API_KEY;
@@ -24,16 +23,21 @@ jobs:
             if(!r.ok)throw Error('n8n API HTTP '+r.status);
             return r.json();
           }
-          const since=Date.parse('2026-11-25T00:00:00+05:30'),until=Date.parse('2026-11-26T00:00:00+05:30');
-          const ids={christmas:'lw6IvbrIW71nU1nO',quiz:'nB10Ub0ZIxCe5gHI',parent:'TCMiKoaj2xkNvK1L',publisher:'UyXSFUjWdkjuqK1p'};
-          for(const [name,id] of Object.entries(ids)){
-            const l=await get('/executions?workflowId='+id+'&limit=50');
-            for(const e of (l.data||[]).filter(e=>Date.parse(e.startedAt)>=since&&Date.parse(e.startedAt)<until)){
-              const d=await get('/executions/'+e.id+'?includeData=true');
-              const rd=d.data?.resultData||{}, nodes=rd.runData||{};
-              const errors=Object.entries(nodes).flatMap(([n,rs])=>rs.filter(r=>r.error).map(r=>({node:n,type:r.error.name||'error',http:r.error.httpCode||null})));
-              const receipts=Object.entries(nodes).filter(([n])=>/Record .*Delivery Result|Return .*Result/i.test(n)).map(([node,rs])=>{const j=rs.at(-1)?.data?.main?.[0]?.[0]?.json||{};return {node,status:['published','failed','skipped','unknown','blocked','pending','already_published'].includes(j.status)?j.status:'unknown',hasRemoteId:!!j.remoteId}});
-              console.log(JSON.stringify({workflow:name,id:e.id,startedAt:e.startedAt,status:e.status,lastNode:rd.lastNodeExecuted||null,errorNode:rd.error?.node?.name||null,errorType:rd.error?.name||null,errors,receipts,executedNodes:Object.keys(nodes)}));
+          function classify(s){
+            s=String(s||'');
+            return ['invalid_grant','expired','OAuth','access token','permission','unauthorized','forbidden','quota','rate limit','invalid parameter','unsupported','not ready','processing','download','media','video','Unknown response','not confirmed','403','401','400','429','190','2207026'].filter(x=>s.toLowerCase().includes(x.toLowerCase()));
+          }
+          for(const id of ['2192','2193','2194','2197','2198','2199']){
+            const d=await get('/executions/'+id+'?includeData=true');
+            const nodes=d.data?.resultData?.runData||{};
+            const out=n=>nodes[n]?.at(-1)?.data?.main?.[0]?.[0]?.json||{};
+            const receipt=out('Normalize Actual Platform Outcome').publicResult||{};
+            const detail=[];
+            for(const n of ['Public YouTube Download ImageKit MP4','Public YouTube Upload','FB Reel Start Upload','FB Reel Upload Binary','FB Reel Finish Upload','Facebook Finish Uncertain','IG Create Container','IG Check Status','IG Normalize Status','Instagram Processing Uncertain']){
+              if(!nodes[n])continue;
+              const j=out(n),e=j.error||{};
+              detail.push({node:n,keys:Object.keys(j),codes:[e.code,e.error_subcode,e.httpCode,j.statusCode,j.code].filter(x=>typeof x==='number'||/^\d{3,8}$/.test(String(x))),messageClasses:classify([typeof e==='string'?e:e.message,j.message,j.error_message,j.ig_fail_reason,j.fb_fail_reason].join(' ')),statusCode:typeof j.status_code==='string'&&/^[A-Z_]+$/.test(j.status_code)?j.status_code:null,remoteIdPresent:!!(j.id||j.video_id||j.fb_video_id||j.ig_container_id)});
             }
+            console.log(JSON.stringify({execution:id,platform:receipt.platform,status:receipt.status,remoteId:/^[A-Za-z0-9_-]{6,32}$/.test(String(receipt.remoteId))?receipt.remoteId:null,errorClasses:classify(receipt.error),detail}));
           }
           NODE
