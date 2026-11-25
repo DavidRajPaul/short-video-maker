@@ -13,8 +13,9 @@ const exec=promisify(execFile),here=path.dirname(fileURLToPath(import.meta.url))
 const root=path.resolve(process.env.STUDIO_DATA_DIR||'./studio-data');
 const MAX=100*1024*1024;
 const users=Object.entries({creator:process.env.STUDIO_CREATOR_PASSWORD,janet:process.env.STUDIO_JANET_PASSWORD}).filter(([,p])=>p&&p.length>=16);
-if(!users.length)throw Error('Configure at least one 16+ character creator password');
-const publicOrigin=new URL(process.env.STUDIO_ORIGIN||'http://localhost:8080').origin;
+// Missing passwords leave the service locked; only a non-sensitive health route responds.
+if(!users.length&&process.env.STUDIO_ENABLE_PUBLISH==='true')throw Error('Configure creator passwords before publishing');
+const publicOrigin=new URL(process.env.STUDIO_ORIGIN||(process.env.RAILWAY_PUBLIC_DOMAIN?'https://'+process.env.RAILWAY_PUBLIC_DOMAIN:'http://localhost:8080')).origin;
 const enabled=process.env.STUDIO_ENABLE_PUBLISH==='true';
 if(enabled){const u=new URL(process.env.STUDIO_N8N_WEBHOOK||'');if(u.origin!=='https://meetdavidraj7.n8n-wsk.com'||u.pathname!=='/webhook/grace-creator-studio-v1'||u.search||u.hash||u.username||u.password||!process.env.STUDIO_N8N_SECRET||process.env.STUDIO_N8N_SECRET.length<32||!process.env.IMAGEKIT_PRIVATE_KEY)throw Error('Configure dedicated publishing credentials before enabling');}
 let authFailures=0,authWindow=Date.now();
@@ -64,6 +65,8 @@ await mkdir(root,{recursive:true,mode:0o700});
 for(const id of await readdir(root)){if(!safeId(id))continue;try{const j=JSON.parse(await readFile(path.join(jobPath(id),'job.json'),'utf8'));if(['preparing','publishing'].includes(j.state)){j.state='interrupted';for(const r of Object.values(j.receipts||{}))if(r.status==='claimed')r.status='uncertain';await save(j);}}catch{}}
 const server=http.createServer(async(req,res)=>{
  res.setHeader('cache-control','no-store');res.setHeader('x-content-type-options','nosniff');res.setHeader('referrer-policy','no-referrer');res.setHeader('x-frame-options','DENY');res.setHeader('content-security-policy',"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src 'self' blob:; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'");
+ if(req.method==='GET'&&req.url==='/health')return json(res,200,{status:'ok'});
+ if(!users.length)return json(res,503,{error:'Creator Studio is locked until the owner configures passwords.'});
  if(Date.now()-authWindow>60000){authWindow=Date.now();authFailures=0;}const user=auth(req);if(!user){if(++authFailures>30)return json(res,429,{error:'Too many sign-in attempts; wait one minute'});res.setHeader('www-authenticate','Basic realm="Grace Creator Studio", charset="UTF-8"');return json(res,401,{error:'Sign in'});}
  const u=new URL(req.url,'http://localhost');
  if(req.method!=='GET'&&(req.headers.origin!==publicOrigin||req.headers['x-studio-request']!=='1'))return json(res,403,{error:'Invalid request origin'});
