@@ -245,7 +245,9 @@ export class ShortCreator {
         for (let attempt = 0; attempt < attempts; attempt++) {
           try {
             const clip = await pexelsApi.findVideo(
-              searchTerms, audioLength, excludeVideoIds, orientation, undefined, visualRequirement === true,
+              visualRequirement === "nature" ? [searchTerms[attempt % searchTerms.length]] : searchTerms,
+              audioLength, excludeVideoIds, orientation,
+              visualRequirement === "nature" ? 5000 : undefined, visualRequirement === true,
             );
             excludeVideoIds.push(clip.id);
             await runMedia("curl", [
