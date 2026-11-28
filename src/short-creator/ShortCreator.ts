@@ -164,6 +164,7 @@ export class ShortCreator {
       config.orientation || OrientationEnum.portrait;
 
     let coverBackground: string | undefined;
+    let previousFootage: { path: string; id: string } | undefined;
     let index = 0;
     for (const scene of inputScenes) {
       const plan = planNarration(scene, config);
@@ -226,29 +227,73 @@ export class ShortCreator {
         index++;
         continue;
       }
-      let accepted = false;
-      let selectedId = "";
+      let selectedId: string | undefined;
       const strictChristianVisuals = config.strictChristianVisuals ?? true;
       const maxAttempts = strictChristianVisuals ? 30 : 12;
-      for (let attempt = 0; attempt < maxAttempts && !accepted; attempt++) {
-       try {
-        const clip = await this.pexelsApi.findVideo(scene.searchTerms,audioLength,excludeVideoIds,orientation,undefined,strictChristianVisuals);
-        excludeVideoIds.push(clip.id);
-        const raw = tempVideoPath+".stock";
-        tempFiles.push(raw);
-        // Bound storage and time. Re-encode only the selected excerpt; discard stock audio.
-        const vertical = orientation === OrientationEnum.portrait;
-        const size = vertical ? "1080:1920" : "1920:1080";
-        await runMedia("curl",["--fail","--location","--proto","=https","--max-time","60","--max-filesize","100000000","--output",raw,clip.url]);
-        await runMedia("ffmpeg",["-y","-loglevel","error","-i",raw,"-t",String(audioLength+0.2),"-vf",`scale=${size}:force_original_aspect_ratio=increase,crop=${size},setsar=1`,"-an","-threads","2","-preset","ultrafast","-pix_fmt","yuv420p",tempVideoPath],{timeout:90000});
-        accepted = await screenFootage(tempVideoPath,audioLength,config.strictChristianVisuals ?? true);
-        selectedId = clip.id;
-      } catch (error) {
-        const cause = error instanceof Error ? error.message : String(error);
-        logger.warn({videoId,index,stage:"download-or-transcode",reason:cause.slice(0,300).replace(/https?:\/\/\S+/g,"[url]")},"External clip unavailable");
+      const vertical = orientation === OrientationEnum.portrait;
+      const size = vertical ? "1080:1920" : "1920:1080";
+      const crop = `scale=${size}:force_original_aspect_ratio=increase,crop=${size},setsar=1`;
+      const raw = tempVideoPath + ".stock";
+      tempFiles.push(raw);
+
+      const selectStock = async (
+        pexelsApi: PexelsAPI,
+        searchTerms: string[],
+        visualRequirement: boolean | "nature",
+        attempts: number,
+      ): Promise<string | undefined> => {
+        for (let attempt = 0; attempt < attempts; attempt++) {
+          try {
+            const clip = await pexelsApi.findVideo(
+              searchTerms, audioLength, excludeVideoIds, orientation, undefined, visualRequirement === true,
+            );
+            excludeVideoIds.push(clip.id);
+            await runMedia("curl", [
+              "--fail", "--location", "--proto", "=https", "--max-time", "60",
+              "--max-filesize", "100000000", "--output", raw, clip.url,
+            ]);
+            await runMedia("ffmpeg", [
+              "-y", "-loglevel", "error", "-i", raw, "-t", String(audioLength + 0.2),
+              "-vf", crop, "-an", "-threads", "2", "-preset", "ultrafast",
+              "-pix_fmt", "yuv420p", tempVideoPath,
+            ], { timeout: 90000 });
+            if (await screenFootage(tempVideoPath, audioLength, visualRequirement)) return clip.id;
+          } catch (error) {
+            const cause = error instanceof Error ? error.message : String(error);
+            logger.warn(
+              { videoId, index, visualRequirement, reason: cause.slice(0, 300).replace(/https?:\/\/\S+/g, "[url]") },
+              "External clip unavailable",
+            );
+          }
+        }
+        return undefined;
+      };
+
+      selectedId = await selectStock(this.pexelsApi, scene.searchTerms, strictChristianVisuals, maxAttempts);
+      if (!selectedId && strictChristianVisuals) {
+        const natureTerms = [
+          "ocean waves rocky coast",
+          "forest river flowing",
+          "mountain lake moving clouds",
+        ];
+        const firstTerm = index % natureTerms.length;
+        const rotatedTerms = [...natureTerms.slice(firstTerm), ...natureTerms.slice(0, firstTerm)];
+        selectedId = await selectStock(this.pexelsApi, rotatedTerms, "nature", 6);
+        if (selectedId) {
+          logger.info({ videoId, index, selectedId }, "Using screened moving nature fallback");
+        } else if (previousFootage) {
+          await runMedia("ffmpeg", [
+            "-y", "-loglevel", "error", "-stream_loop", "-1", "-i", previousFootage.path,
+            "-t", String(audioLength + 0.2), "-an", "-threads", "2", "-preset", "ultrafast",
+            "-pix_fmt", "yuv420p", tempVideoPath,
+          ], { timeout: 90000 });
+          selectedId = previousFootage.id;
+          logger.warn({ videoId, index, selectedId }, "Nature fallback exhausted; continuing approved moving footage");
+        } else {
+          throw new Error(`No approved moving footage for devotional scene ${index + 1}`);
+        }
       }
-      }
-      if (!accepted) {
+      if (!selectedId) {
         // Last-resort, bundled stills keep a scene renderable without weakening
         // the safety or devotional checks applied to downloaded footage.
         const fallbackPath = path.join(
@@ -262,14 +307,12 @@ export class ShortCreator {
             `Stock footage exhausted for scene ${index + 1} after ${maxAttempts} attempts and bundled fallback image is missing.`,
           );
         }
-        const vertical = orientation === OrientationEnum.portrait;
-        const size = vertical ? "1080:1920" : "1920:1080";
         await runMedia(
           "ffmpeg",
           [
             "-y", "-loglevel", "error", "-loop", "1", "-i", fallbackPath,
             "-t", String(audioLength + 0.2),
-            "-vf", `scale=${size}:force_original_aspect_ratio=increase,crop=${size},setsar=1`,
+            "-vf", crop,
             "-r", "30", "-an", "-threads", "2", "-preset", "ultrafast",
             "-pix_fmt", "yuv420p", tempVideoPath,
           ],
@@ -280,6 +323,9 @@ export class ShortCreator {
           { videoId, index, attempts: maxAttempts, fallback: path.basename(fallbackPath) },
           "Stock footage exhausted; using bundled still-image fallback",
         );
+      }
+      if (strictChristianVisuals && previousFootage?.id !== selectedId) {
+        previousFootage = { path: tempVideoPath, id: selectedId };
       }
       logger.info({videoId,index,selectedId},"Approved scene source");
       usedIds.push(selectedId);
