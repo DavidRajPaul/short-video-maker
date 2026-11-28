@@ -157,7 +157,7 @@ let classifier: ReturnType<typeof loadClassifier> | undefined;
 
 // Inspect the portion used in the output, including its initial frame. Unavailable
 // classification, missing frames, or uncertain scores never approve external media.
-export async function screenFootage(file: string, seconds: number, strictChristianVisuals = false): Promise<boolean> {
+export async function screenFootage(file: string, seconds: number, visualRequirement: boolean | "nature" = false): Promise<boolean> {
   const dir = await mkdtemp(path.join(tmpdir(), "grace-review-"));
   try {
     await runMedia("ffmpeg", ["-v","error","-i",file,"-t",String(seconds),"-vf","fps=2:start_time=0,scale=256:256:force_original_aspect_ratio=decrease","-q:v","4",path.join(dir,"%05d.jpg")], {timeout:60000});
@@ -180,7 +180,11 @@ export async function screenFootage(file: string, seconds: number, strictChristi
         logger.warn({safeScore:Number(safe.toFixed(3)),topLabel:scores[0]?.label},"Footage content score below approval threshold");
         return false;
       }
-      if (strictChristianVisuals && (index === 0 || index === Math.floor(frames.length/2) || index === frames.length-1)) {
+      if (visualRequirement === "nature" && scores[0]?.label !== "a peaceful landscape") {
+        logger.info({ topLabel: scores[0]?.label }, "Fallback candidate is not a nature landscape");
+        return false;
+      }
+      if (visualRequirement === true && (index === 0 || index === Math.floor(frames.length/2) || index === frames.length-1)) {
         const relevance = await classify(path.join(dir,frame), [...devotionalLabels,...unrelatedLabels]) as {label:string;score:number}[];
         const {approved: relevant,faithful} = approvedDevotionalClassification(relevance);
         if (!relevant) {
